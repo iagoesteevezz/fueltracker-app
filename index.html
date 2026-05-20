@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FuelTracker — Control de Consumo</title>
+
+  <!-- ─── FUENTES ───────────────────────────────────────────
+       Barlow Condensed: tipografía condensada y técnica, perfecta
+       para un dashboard. JetBrains Mono: datos numéricos precisos.
+  ──────────────────────────────────────────────────────── -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+
+  <!-- ─── TAILWIND CDN ──────────────────────────────────────
+       El Play CDN de Tailwind carga el motor JIT completo en el
+       navegador. Perfecto para desarrollo; en producción usarías
+       el CLI para generar solo las clases que necesitas.
+  ──────────────────────────────────────────────────────── -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- ─── CHART.JS ─────────────────────────────────────────
+       Librería de gráficas. Usamos la versión UMD (bundle único)
+       para no necesitar un bundler.
+  ──────────────────────────────────────────────────────── -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+
+  <!-- ─── CONFIG TAILWIND ──────────────────────────────────
+       Extendemos el tema con nuestros colores y fuentes propios.
+       Esto permite usar clases como "bg-dark-900" o "font-display".
+  ──────────────────────────────────────────────────────── -->
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            fuel:  { DEFAULT: '#f97316', dim: '#7c3a1a', glow: '#f9731620' },
+            dark:  { 900: '#07090d', 800: '#0d1117', 700: '#161b22', 600: '#21262d', 500: '#30363d' },
+            ink:   { DEFAULT: '#e6edf3', muted: '#8b949e', faint: '#484f58' },
+          },
+          fontFamily: {
+            display: ['"Barlow Condensed"', 'sans-serif'],
+            body:    ['"DM Sans"',           'sans-serif'],
+            mono:    ['"JetBrains Mono"',    'monospace'],
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    /* ── Reset y base ────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background-color: #07090d;
+      color: #e6edf3;
+      /* Textura de fondo sutil: patrón de puntos */
+      background-image: radial-gradient(circle, #21262d 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
+
+    /* ── Línea de acento superior en cards ───────────────── */
+    .card-accent::before {
+      content: '';
+      display: block;
+      height: 2px;
+      background: linear-gradient(90deg, #f97316, transparent);
+      border-radius: 2px 2px 0 0;
+    }
+
+    /* ── Números grandes con fuente monospace ────────────── */
+    .stat-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 2rem;
+      font-weight: 500;
+      letter-spacing: -0.04em;
+      line-height: 1;
+    }
+
+    /* ── Animación de entrada para las filas de la tabla ─── */
+    @keyframes fadeSlideIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .row-animate {
+      animation: fadeSlideIn 0.3s ease forwards;
+    }
+
+    /* ── Input personalizado: override del foco de Tailwind ─ */
+    .fuel-input:focus {
+      outline: none;
+      border-color: #f97316;
+      box-shadow: 0 0 0 3px #f9731620;
+    }
+
+    /* ── Badge de consumo en la tabla ────────────────────── */
+    .consumption-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+    .consumption-good    { background: #0d2b1a; color: #3fb950; border: 1px solid #238636; }
+    .consumption-average { background: #2b1f0a; color: #e3b341; border: 1px solid #9e6a03; }
+    .consumption-bad     { background: #2b0f0f; color: #f85149; border: 1px solid #da3633; }
+
+    /* ── Scrollbar personalizada ─────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #0d1117; }
+    ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #484f58; }
+
+    /* ── Toast de notificación ───────────────────────────── */
+    #toast {
+      transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+      transform: translateY(100px);
+      opacity: 0;
+    }
+    #toast.visible {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    /* ── Preview de consumo en el formulario ─────────────── */
+    #consumption-preview {
+      transition: all 0.2s ease;
+    }
+
+    /* ── Loader del chart ────────────────────────────────── */
+    @keyframes pulse {
+      0%, 100% { opacity: 0.4; }
+      50%       { opacity: 1; }
+    }
+    .chart-loader { animation: pulse 1.5s ease-in-out infinite; }
+  </style>
+</head>
+
+<body class="min-h-screen">
+
+  <!-- ═══════════════════════════════════════════════════════
+       HEADER
+       El encabezado es estrecho y funcional, como un panel de control.
+  ═══════════════════════════════════════════════════════════ -->
+  <header class="border-b border-dark-600 bg-dark-800/80 backdrop-blur-sm sticky top-0 z-10">
+    <div class="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+
+      <div class="flex items-center gap-3">
+        <!-- Icono de combustible (SVG inline) -->
+        <div class="w-8 h-8 rounded-lg bg-fuel/10 border border-fuel/30 flex items-center justify-center">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 22V8l7-6 7 6v14"/>
+            <path d="M10 22V13h4v9"/>
+            <path d="M17 8h2a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/>
+          </svg>
+        </div>
+        <span class="font-display text-xl font-600 tracking-wider text-ink uppercase">
+          Fuel<span class="text-fuel">Tracker</span>
+        </span>
+      </div>
+
+      <!-- Indicador de estado de la API -->
+      <div class="flex items-center gap-2 text-xs font-mono text-ink-muted">
+        <div id="api-status-dot" class="w-2 h-2 rounded-full bg-dark-500"></div>
+        <span id="api-status-text">Conectando...</span>
+      </div>
+
+    </div>
+  </header>
+
+
+  <main class="max-w-7xl mx-auto px-6 py-8 space-y-6">
+
+    <!-- ═══════════════════════════════════════════════════════
+         FILA DE ESTADÍSTICAS
+         4 tarjetas con los KPIs más importantes del histórico.
+    ═══════════════════════════════════════════════════════════ -->
+    <section>
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+
+        <!-- Cada tarjeta de estadística tiene la misma estructura:
+             - Línea de acento naranja en la parte superior (card-accent)
+             - Etiqueta descriptiva pequeña
+             - Valor numérico grande en monospace
+             - Unidad en texto muted -->
+
+        <div class="card-accent bg-dark-800 border border-dark-600 rounded-xl p-5">
+          <p class="text-xs font-display uppercase tracking-widest text-ink-muted mb-3">Consumo medio</p>
+          <div class="flex items-end gap-2">
+            <span id="stat-avg-consumption" class="stat-value text-fuel">—</span>
+            <span class="text-ink-muted text-sm mb-1">L/100km</span>
+          </div>
+        </div>
+
+        <div class="card-accent bg-dark-800 border border-dark-600 rounded-xl p-5">
+          <p class="text-xs font-display uppercase tracking-widest text-ink-muted mb-3">Kilómetros totales</p>
+          <div class="flex items-end gap-2">
+            <span id="stat-total-km" class="stat-value">—</span>
+            <span class="text-ink-muted text-sm mb-1">km</span>
+          </div>
+        </div>
+
+        <div class="card-accent bg-dark-800 border border-dark-600 rounded-xl p-5">
+          <p class="text-xs font-display uppercase tracking-widest text-ink-muted mb-3">Litros totales</p>
+          <div class="flex items-end gap-2">
+            <span id="stat-total-liters" class="stat-value">—</span>
+            <span class="text-ink-muted text-sm mb-1">L</span>
+          </div>
+        </div>
+
+        <div class="card-accent bg-dark-800 border border-dark-600 rounded-xl p-5">
+          <p class="text-xs font-display uppercase tracking-widest text-ink-muted mb-3">Gasto total</p>
+          <div class="flex items-end gap-2">
+            <span id="stat-total-cost" class="stat-value">—</span>
+            <span class="text-ink-muted text-sm mb-1">€</span>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+
+    <!-- ═══════════════════════════════════════════════════════
+         FILA PRINCIPAL: FORMULARIO + GRÁFICA
+         Layout asimétrico: formulario compacto a la izquierda,
+         gráfica amplia a la derecha.
+    ═══════════════════════════════════════════════════════════ -->
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+
+      <!-- ── FORMULARIO DE NUEVO REPOSTAJE ──────────────────
+           Los campos son los mismos que espera el endpoint POST.
+           La característica más interesante: el "preview" de consumo
+           se calcula en tiempo real mientras el usuario escribe.
+      ──────────────────────────────────────────────────────── -->
+      <div class="bg-dark-800 border border-dark-600 rounded-xl p-6">
+
+        <h2 class="font-display text-lg font-600 uppercase tracking-wider text-ink mb-5 flex items-center gap-2">
+          <span class="w-1 h-5 bg-fuel rounded-full inline-block"></span>
+          Nuevo repostaje
+        </h2>
+
+        <form id="refuel-form" class="space-y-4">
+
+          <!-- Fecha -->
+          <div>
+            <label class="block text-xs font-display uppercase tracking-widest text-ink-muted mb-1.5">
+              Fecha
+            </label>
+            <input
+              type="date"
+              id="refuel_date"
+              name="refuel_date"
+              class="fuel-input w-full bg-dark-700 border border-dark-500 rounded-lg px-3 py-2.5 text-sm text-ink font-mono transition-colors"
+            />
+          </div>
+
+          <!-- Kilómetros parciales -->
+          <div>
+            <label class="block text-xs font-display uppercase tracking-widest text-ink-muted mb-1.5">
+              Kilómetros desde último repostaje <span class="text-fuel">*</span>
+            </label>
+            <div class="relative">
+              <input
+                type="number"
+                id="km_since_last"
+                name="km_since_last"
+                placeholder="0.0"
+                step="0.1"
+                min="0.1"
+                class="fuel-input w-full bg-dark-700 border border-dark-500 rounded-lg px-3 py-2.5 pr-12 text-sm text-ink font-mono transition-colors"
+              />
+              <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink-faint font-mono">km</span>
+            </div>
+          </div>
+
+          <!-- Litros -->
+          <div>
+            <label class="block text-xs font-display uppercase tracking-widest text-ink-muted mb-1.5">
+              Litros llenados <span class="text-fuel">*</span>
+            </label>
+            <div class="relative">
+              <input
+                type="number"
+                id="liters_filled"
+                name="liters_filled"
+                placeholder="0.000"
+                step="0.001"
+                min="0.001"
+                class="fuel-input w-full bg-dark-700 border border-dark-500 rounded-lg px-3 py-2.5 pr-8 text-sm text-ink font-mono transition-colors"
+              />
+              <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink-faint font-mono">L</span>
+            </div>
+          </div>
+
+          <!-- Precio por litro -->
+          <div>
+            <label class="block text-xs font-display uppercase tracking-widest text-ink-muted mb-1.5">
+              Precio por litro <span class="text-ink-faint">(opcional)</span>
+            </label>
+            <div class="relative">
+              <input
+                type="number"
+                id="price_per_liter"
+                name="price_per_liter"
+                placeholder="1.000"
+                step="0.001"
+                min="0"
+                class="fuel-input w-full bg-dark-700 border border-dark-500 rounded-lg px-3 py-2.5 pr-8 text-sm text-ink font-mono transition-colors"
+              />
+              <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink-faint font-mono">€</span>
+            </div>
+          </div>
+
+          <!-- Notas -->
+          <div>
+            <label class="block text-xs font-display uppercase tracking-widest text-ink-muted mb-1.5">
+              Notas <span class="text-ink-faint">(opcional)</span>
+            </label>
+            <input
+              type="text"
+              id="notes"
+              name="notes"
+              placeholder="Gasolinera, tipo de combustible..."
+              maxlength="200"
+              class="fuel-input w-full bg-dark-700 border border-dark-500 rounded-lg px-3 py-2.5 text-sm text-ink transition-colors"
+            />
+          </div>
+
+          <!-- ── Preview de consumo ────────────────────────
+               Se calcula con JS en tiempo real mientras el usuario
+               escribe en los campos km y litros. Es la misma
+               fórmula que usa el backend: (litros/km)*100.
+               Así el usuario sabe el dato antes de enviar.
+          ──────────────────────────────────────────────── -->
+          <div id="consumption-preview" class="rounded-lg border border-dark-500 bg-dark-700/50 px-4 py-3 hidden">
+            <p class="text-xs text-ink-muted font-display uppercase tracking-wider mb-1">Consumo estimado</p>
+            <p class="font-mono text-fuel text-2xl font-500" id="preview-value">—</p>
+            <p class="text-xs text-ink-faint mt-0.5">L/100km</p>
+          </div>
+
+          <!-- Botón de envío -->
+          <button
+            type="submit"
+            id="submit-btn"
+            class="w-full bg-fuel hover:bg-fuel/90 active:scale-[0.98] text-white font-display uppercase tracking-widest text-sm font-600 py-3 rounded-lg transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            <span id="submit-text">Registrar repostaje</span>
+          </button>
+
+        </form>
+      </div>
+
+
+      <!-- ── GRÁFICA DE CONSUMO HISTÓRICO ───────────────────
+           Chart.js renderiza la evolución del consumo a lo largo
+           del tiempo. Es una línea con puntos (scatter+line).
+           Nota: Canvas no puede leer variables CSS, por eso los
+           colores van hardcodeados en la config de Chart.js.
+      ──────────────────────────────────────────────────────── -->
+      <div class="lg:col-span-2 bg-dark-800 border border-dark-600 rounded-xl p-6 flex flex-col">
+
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="font-display text-lg font-600 uppercase tracking-wider text-ink flex items-center gap-2">
+            <span class="w-1 h-5 bg-fuel rounded-full inline-block"></span>
+            Evolución del consumo
+          </h2>
+          <span class="text-xs font-mono text-ink-faint">L/100km</span>
+        </div>
+
+        <!-- Estado vacío de la gráfica -->
+        <div id="chart-empty" class="flex-1 flex flex-col items-center justify-center text-ink-faint gap-2">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+          </svg>
+          <p class="text-sm">Sin datos todavía</p>
+          <p class="text-xs">Añade tu primer repostaje</p>
+        </div>
+
+        <!-- Canvas de la gráfica (oculto hasta que hay datos) -->
+        <div id="chart-container" class="flex-1 hidden" style="min-height: 220px; position: relative;">
+          <canvas id="consumption-chart" role="img" aria-label="Gráfica de línea con la evolución del consumo de combustible en L/100km a lo largo del tiempo"></canvas>
+        </div>
+
+      </div>
+    </section>
+
+
+    <!-- ═══════════════════════════════════════════════════════
+         TABLA DE HISTÓRICO
+         Muestra todos los repostajes ordenados por fecha DESC.
+         Incluye un badge de color para el consumo (bueno/medio/malo)
+         calculado con umbrales generales para la mayoría de coches.
+    ═══════════════════════════════════════════════════════════ -->
+    <section class="bg-dark-800 border border-dark-600 rounded-xl overflow-hidden">
+
+      <div class="px-6 py-4 border-b border-dark-600 flex items-center justify-between">
+        <h2 class="font-display text-lg font-600 uppercase tracking-wider text-ink flex items-center gap-2">
+          <span class="w-1 h-5 bg-fuel rounded-full inline-block"></span>
+          Histórico de repostajes
+        </h2>
+        <span id="table-count" class="text-xs font-mono text-ink-faint">0 registros</span>
+      </div>
+
+      <!-- Estado de carga -->
+      <div id="table-loading" class="py-16 flex flex-col items-center gap-3 text-ink-muted">
+        <div class="chart-loader">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2">
+            <path d="M3 22V8l7-6 7 6v14"/><path d="M10 22V13h4v9"/>
+          </svg>
+        </div>
+        <p class="text-sm">Cargando datos...</p>
+      </div>
+
+      <!-- Estado vacío -->
+      <div id="table-empty" class="py-16 flex flex-col items-center gap-2 text-ink-faint hidden">
+        <p class="text-sm">No hay repostajes registrados.</p>
+        <p class="text-xs">Usa el formulario de la izquierda para añadir el primero.</p>
+      </div>
+
+      <!-- Tabla (oculta hasta que hay datos) -->
+      <div id="table-wrapper" class="hidden overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-dark-600 text-ink-faint">
+              <th class="text-left px-6 py-3 font-display text-xs uppercase tracking-widest font-400">Fecha</th>
+              <th class="text-right px-4 py-3 font-display text-xs uppercase tracking-widest font-400">Km recorridos</th>
+              <th class="text-right px-4 py-3 font-display text-xs uppercase tracking-widest font-400">Litros</th>
+              <th class="text-right px-4 py-3 font-display text-xs uppercase tracking-widest font-400">€/L</th>
+              <th class="text-right px-4 py-3 font-display text-xs uppercase tracking-widest font-400">Total €</th>
+              <th class="text-center px-4 py-3 font-display text-xs uppercase tracking-widest font-400">Consumo</th>
+              <th class="text-left px-6 py-3 font-display text-xs uppercase tracking-widest font-400">Notas</th>
+            </tr>
+          </thead>
+          <tbody id="refuels-tbody">
+            <!-- Las filas se inyectan dinámicamente con JS -->
+          </tbody>
+        </table>
+      </div>
+
+    </section>
+
+  </main>
+
+
+  <!-- ═══════════════════════════════════════════════════════
+       TOAST DE NOTIFICACIÓN
+       Aparece en la esquina inferior derecha tras una acción.
+       Usa una clase CSS .visible para animar entrada/salida.
+  ═══════════════════════════════════════════════════════════ -->
+  <div
+    id="toast"
+    class="fixed bottom-6 right-6 z-50 rounded-xl border px-5 py-4 text-sm max-w-xs shadow-2xl"
+    role="alert"
+    aria-live="polite"
+  >
+    <p id="toast-message" class="font-500"></p>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════════
+       JAVASCRIPT — LÓGICA DE LA APLICACIÓN
+  ═══════════════════════════════════════════════════════════ -->
+  <script>
+    // ─────────────────────────────────────────────────────────
+    // CONFIG
+    // Centralizar la URL base aquí facilita cambiarla cuando
+    // despliegues el backend en producción: solo tocas esta línea.
+    // ─────────────────────────────────────────────────────────
+    const API_BASE = 'http://localhost:3000/api/v1';
+
+
+    // ─────────────────────────────────────────────────────────
+    // ESTADO GLOBAL
+    // En una app pequeña con JS puro, un array global es
+    // suficiente. En proyectos más grandes usarías un store
+    // (Redux, Zustand, Pinia...) para gestionar el estado.
+    // ─────────────────────────────────────────────────────────
+    let refuels = [];     // Array con todos los repostajes cargados
+    let chartInstance = null; // Referencia al objeto Chart.js activo
+
+
+    // ─────────────────────────────────────────────────────────
+    // REFERENCIAS AL DOM
+    // Guardamos referencias una sola vez al inicio en vez de
+    // llamar a getElementById en cada render. Es más eficiente
+    // y más fácil de mantener.
+    // ─────────────────────────────────────────────────────────
+    const dom = {
+      // Stats
+      statAvg:        document.getElementById('stat-avg-consumption'),
+      statKm:         document.getElementById('stat-total-km'),
+      statLiters:     document.getElementById('stat-total-liters'),
+      statCost:       document.getElementById('stat-total-cost'),
+      // Formulario
+      form:           document.getElementById('refuel-form'),
+      kmInput:        document.getElementById('km_since_last'),
+      litersInput:    document.getElementById('liters_filled'),
+      priceInput:     document.getElementById('price_per_liter'),
+      dateInput:      document.getElementById('refuel_date'),
+      notesInput:     document.getElementById('notes'),
+      preview:        document.getElementById('consumption-preview'),
+      previewValue:   document.getElementById('preview-value'),
+      submitBtn:      document.getElementById('submit-btn'),
+      submitText:     document.getElementById('submit-text'),
+      // Tabla
+      tbody:          document.getElementById('refuels-tbody'),
+      tableLoading:   document.getElementById('table-loading'),
+      tableEmpty:     document.getElementById('table-empty'),
+      tableWrapper:   document.getElementById('table-wrapper'),
+      tableCount:     document.getElementById('table-count'),
+      // Chart
+      chartCanvas:    document.getElementById('consumption-chart'),
+      chartEmpty:     document.getElementById('chart-empty'),
+      chartContainer: document.getElementById('chart-container'),
+      // API status
+      apiDot:         document.getElementById('api-status-dot'),
+      apiText:        document.getElementById('api-status-text'),
+      // Toast
+      toast:          document.getElementById('toast'),
+      toastMsg:       document.getElementById('toast-message'),
+    };
+
+
+    // ─────────────────────────────────────────────────────────
+    // INIT
+    // Punto de entrada. DOMContentLoaded garantiza que el HTML
+    // está parseado antes de que intentemos manipularlo.
+    // ─────────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', () => {
+      setTodayAsDefault();
+      setupFormListeners();
+      loadRefuels();
+    });
+
+
+    // ─────────────────────────────────────────────────────────
+    // API — FUNCIONES DE COMUNICACIÓN CON EL BACKEND
+    // Todas usan async/await y el patrón try/catch para manejar
+    // tanto errores de red como errores de la API (4xx, 5xx).
+    // ─────────────────────────────────────────────────────────
+
+    /**
+     * Carga todos los repostajes del backend y refresca la UI.
+     */
+    async function loadRefuels() {
+      try {
+        const res  = await fetch(`${API_BASE}/refuels`);
+
+        // Si la respuesta no es 2xx, lanzamos un error manual
+        // para que el catch lo capture.
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const json = await res.json();
+        refuels    = json.data;
+
+        // Actualizamos el indicador de estado de la API
+        setApiStatus(true);
+
+        // Con los datos cargados, actualizamos todos los bloques de UI
+        renderAll(refuels);
+
+      } catch (error) {
+        console.error('[loadRefuels]', error);
+        setApiStatus(false);
+
+        // Mostramos la tabla en estado "vacío" para no dejar el spinner
+        showTableState('empty');
+      }
+    }
+
+    /**
+     * Envía un nuevo repostaje al backend.
+     * @param {Object} data - Datos del formulario
+     * @returns {Object} - El registro creado por el servidor
+     */
+    async function createRefuel(data) {
+      const res = await fetch(`${API_BASE}/refuels`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(data),
+      });
+
+      // Siempre parseamos el JSON aunque sea un error,
+      // porque el backend devuelve mensajes de error en JSON.
+      const json = await res.json();
+
+      if (!res.ok) {
+        // El backend nos devuelve un array 'errors' con los problemas
+        const msg = json.errors ? json.errors.join('. ') : json.message;
+        throw new Error(msg);
+      }
+
+      return json.data; // Devolvemos el registro recién creado
+    }
+
+
+    // ─────────────────────────────────────────────────────────
+    // RENDER — ACTUALIZACIÓN DE LA UI
+    // Separamos cada bloque visual en su propia función para
+    // que sea fácil entender qué hace cada una y reutilizarlas.
+    // ─────────────────────────────────────────────────────────
+
+    /**
+     * Orquestador: llama a todas las funciones de renderizado
+     * con los datos más recientes.
+     */
+    function renderAll(data) {
+      renderStats(data);
+      renderChart(data);
+      renderTable(data);
+    }
+
+    /**
+     * Actualiza las 4 tarjetas de estadísticas.
+     * Usa Array.reduce para calcular los totales en una sola pasada.
+     */
+    function renderStats(data) {
+      if (data.length === 0) return;
+
+      // reduce() recorre el array acumulando un objeto de totales.
+      // Es más eficiente que hacer 4 forEach separados.
+      const totals = data.reduce((acc, r) => {
+        acc.km         += parseFloat(r.km_since_last);
+        acc.liters     += parseFloat(r.liters_filled);
+        acc.sumConsump += parseFloat(r.avg_consumption);
+
+        // Solo sumamos coste si el repostaje tiene precio por litro
+        if (r.price_per_liter) {
+          acc.cost += parseFloat(r.liters_filled) * parseFloat(r.price_per_liter);
+        }
+        return acc;
+      }, { km: 0, liters: 0, sumConsump: 0, cost: 0 });
+
+      const avgConsumption = totals.sumConsump / data.length;
+
+      dom.statAvg.textContent    = avgConsumption.toFixed(2);
+      dom.statKm.textContent     = totals.km.toLocaleString('es-ES', { maximumFractionDigits: 0 });
+      dom.statLiters.textContent = totals.liters.toFixed(1);
+      dom.statCost.textContent   = totals.cost > 0
+        ? totals.cost.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        : '—';
+    }
+
+    /**
+     * Renderiza o actualiza la gráfica de Chart.js.
+     * Si ya existe una instancia previa, la destruimos antes de crear
+     * la nueva. Esto evita el error "Canvas is already in use".
+     */
+    function renderChart(data) {
+      if (data.length < 2) {
+        dom.chartEmpty.classList.remove('hidden');
+        dom.chartContainer.classList.add('hidden');
+        return;
+      }
+
+      dom.chartEmpty.classList.add('hidden');
+      dom.chartContainer.classList.remove('hidden');
+
+      // Los datos llegan ordenados DESC (más reciente primero),
+      // pero para la gráfica los queremos ASC (izquierda=más antiguo).
+      const sorted = [...data].reverse();
+
+      const labels = sorted.map(r => formatDate(r.refuel_date));
+      const values = sorted.map(r => parseFloat(r.avg_consumption));
+
+      // Destruir instancia anterior si existe
+      if (chartInstance) {
+        chartInstance.destroy();
+        chartInstance = null;
+      }
+
+      chartInstance = new Chart(dom.chartCanvas, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'L/100km',
+            data: values,
+
+            // Línea principal
+            borderColor: '#f97316',
+            borderWidth: 2,
+
+            // Relleno bajo la línea con degradado programático
+            fill: true,
+            backgroundColor: (ctx) => {
+              const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, ctx.chart.height);
+              gradient.addColorStop(0, 'rgba(249, 115, 22, 0.25)');
+              gradient.addColorStop(1, 'rgba(249, 115, 22, 0)');
+              return gradient;
+            },
+
+            // Puntos en cada dato
+            pointBackgroundColor: '#f97316',
+            pointBorderColor: '#07090d',
+            pointBorderWidth: 2,
+            pointRadius: 5,
+            pointHoverRadius: 7,
+
+            tension: 0.35, // Suavizado de la línea (0=recto, 1=muy curvo)
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            // El tooltip aparece cuando el ratón está cerca de cualquier
+            // punto, no solo encima exactamente.
+            mode: 'index',
+            intersect: false,
+          },
+          plugins: {
+            legend: { display: false }, // Ocultamos la leyenda por defecto
+            tooltip: {
+              backgroundColor: '#161b22',
+              borderColor: '#30363d',
+              borderWidth: 1,
+              titleColor: '#8b949e',
+              bodyColor: '#e6edf3',
+              padding: 12,
+              callbacks: {
+                // Personalizamos el formato del tooltip
+                label: (ctx) => ` ${ctx.parsed.y.toFixed(2)} L/100km`,
+              },
+            },
+          },
+          scales: {
+            x: {
+              grid:  { color: '#21262d', drawBorder: false },
+              ticks: { color: '#8b949e', font: { family: 'JetBrains Mono', size: 11 } },
+            },
+            y: {
+              grid:  { color: '#21262d', drawBorder: false },
+              ticks: {
+                color: '#8b949e',
+                font: { family: 'JetBrains Mono', size: 11 },
+                callback: (v) => v.toFixed(1),
+              },
+              // Dejamos un poco de margen arriba y abajo del rango de datos
+              grace: '10%',
+            },
+          },
+        },
+      });
+    }
+
+    /**
+     * Renderiza todas las filas de la tabla del histórico.
+     * innerHTML es aceptable aquí porque los datos vienen de
+     * nuestra propia API, no de input directo del usuario.
+     * En un caso con input de usuario usaríamos textContent
+     * para evitar XSS.
+     */
+    function renderTable(data) {
+      if (data.length === 0) {
+        showTableState('empty');
+        return;
+      }
+
+      showTableState('data');
+      dom.tableCount.textContent = `${data.length} registro${data.length !== 1 ? 's' : ''}`;
+
+      dom.tbody.innerHTML = data.map((r, i) => {
+        const consumption   = parseFloat(r.avg_consumption);
+        const totalCost     = r.price_per_liter
+          ? (parseFloat(r.liters_filled) * parseFloat(r.price_per_liter)).toFixed(2)
+          : '—';
+
+        // Categorizamos el consumo para colorear el badge.
+        // Estos umbrales son válidos para coches de turismo medianos.
+        // Son totalmente arbitrarios y podrías hacerlos configurables.
+        const badgeClass = consumption < 6  ? 'consumption-good'
+                         : consumption < 8  ? 'consumption-average'
+                         :                    'consumption-bad';
+
+        // animation-delay escalonado: cada fila aparece 50ms después
+        // de la anterior, creando un efecto de cascada visual.
+        const delay = Math.min(i * 50, 500);
+
+        return `
+          <tr
+            class="row-animate border-b border-dark-700 hover:bg-dark-700/40 transition-colors"
+            style="animation-delay: ${delay}ms; opacity: 0;"
+          >
+            <td class="px-6 py-4 font-mono text-sm text-ink">${formatDate(r.refuel_date)}</td>
+            <td class="px-4 py-4 font-mono text-sm text-right text-ink">
+              ${parseFloat(r.km_since_last).toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+              <span class="text-ink-faint text-xs ml-1">km</span>
+            </td>
+            <td class="px-4 py-4 font-mono text-sm text-right text-ink">
+              ${parseFloat(r.liters_filled).toFixed(3)}
+              <span class="text-ink-faint text-xs ml-1">L</span>
+            </td>
+            <td class="px-4 py-4 font-mono text-sm text-right text-ink-muted">
+              ${r.price_per_liter ? parseFloat(r.price_per_liter).toFixed(3) + ' €' : '—'}
+            </td>
+            <td class="px-4 py-4 font-mono text-sm text-right text-ink-muted">
+              ${totalCost !== '—' ? totalCost + ' €' : '—'}
+            </td>
+            <td class="px-4 py-4 text-center">
+              <span class="consumption-badge ${badgeClass}">
+                ${consumption.toFixed(2)} L/100
+              </span>
+            </td>
+            <td class="px-6 py-4 text-sm text-ink-faint max-w-[160px] truncate">
+              ${r.notes || ''}
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+
+    // ─────────────────────────────────────────────────────────
+    // FORMULARIO
+    // ─────────────────────────────────────────────────────────
+
+    /**
+     * Configura todos los event listeners del formulario.
+     * Los separamos del setup general para mantener el código organizado.
+     */
+    function setupFormListeners() {
+      // Preview en tiempo real: se recalcula al cambiar km o litros
+      dom.kmInput.addEventListener('input', updateConsumptionPreview);
+      dom.litersInput.addEventListener('input', updateConsumptionPreview);
+
+      // Submit del formulario
+      dom.form.addEventListener('submit', handleSubmit);
+    }
+
+    /**
+     * Calcula y muestra el consumo estimado en tiempo real.
+     * Es exactamente la misma fórmula que usa el backend, así que
+     * el valor mostrado aquí coincidirá siempre con lo guardado.
+     */
+    function updateConsumptionPreview() {
+      const km     = parseFloat(dom.kmInput.value);
+      const liters = parseFloat(dom.litersInput.value);
+
+      if (km > 0 && liters > 0) {
+        const estimated = (liters / km) * 100;
+        dom.previewValue.textContent = estimated.toFixed(2);
+        dom.preview.classList.remove('hidden');
+      } else {
+        dom.preview.classList.add('hidden');
+      }
+    }
+
+    /**
+     * Maneja el envío del formulario.
+     * Recoge los datos, llama a la API y actualiza la UI.
+     * e.preventDefault() impide que el formulario recargue la página
+     * (comportamiento por defecto de los forms HTML).
+     */
+    async function handleSubmit(e) {
+      e.preventDefault();
+
+      // Construimos el objeto de datos solo con los campos rellenos
+      const payload = {
+        km_since_last: dom.kmInput.value,
+        liters_filled: dom.litersInput.value,
+      };
+
+      // Campos opcionales: solo los incluimos si tienen valor
+      if (dom.dateInput.value)    payload.refuel_date    = dom.dateInput.value;
+      if (dom.priceInput.value)   payload.price_per_liter = dom.priceInput.value;
+      if (dom.notesInput.value)   payload.notes           = dom.notesInput.value;
+
+      setSubmitLoading(true);
+
+      try {
+        const created = await createRefuel(payload);
+
+        // Añadimos el nuevo registro AL PRINCIPIO del array local
+        // (recuerda: el histórico está ordenado DESC).
+        // Así NO necesitamos recargar todos los datos del servidor.
+        refuels.unshift(created);
+
+        renderAll(refuels);
+        dom.form.reset();
+        dom.preview.classList.add('hidden');
+        showToast('Repostaje registrado correctamente ✓', 'success');
+
+      } catch (error) {
+        console.error('[handleSubmit]', error);
+        showToast(error.message || 'Error al registrar el repostaje', 'error');
+      } finally {
+        // finally se ejecuta SIEMPRE, haya error o no.
+        // Garantiza que el botón vuelve a su estado normal.
+        setSubmitLoading(false);
+      }
+    }
+
+
+    // ─────────────────────────────────────────────────────────
+    // UTILIDADES
+    // ─────────────────────────────────────────────────────────
+
+    /** Pone el input de fecha con el valor de hoy por defecto. */
+    function setTodayAsDefault() {
+      const today = new Date().toISOString().split('T')[0];
+      dom.dateInput.value = today;
+    }
+
+    /**
+     * Formatea una fecha ISO (ej: "2025-05-18") a formato español
+     * sin depender de la zona horaria del usuario.
+     * new Date('2025-05-18') puede dar el día anterior en zonas UTC+X
+     * si el navegador lo interpreta como UTC medianoche.
+     * Añadir 'T00:00:00' fuerza la interpretación como hora local.
+     */
+    function formatDate(isoDate) {
+      const d = new Date(isoDate + 'T00:00:00');
+      return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+
+    /** Cambia el estado visual del botón de submit durante la petición. */
+    function setSubmitLoading(loading) {
+      dom.submitBtn.disabled = loading;
+      dom.submitText.textContent = loading ? 'Registrando...' : 'Registrar repostaje';
+    }
+
+    /** Controla qué elemento es visible en el área de la tabla. */
+    function showTableState(state) {
+      dom.tableLoading.classList.toggle('hidden', state !== 'loading');
+      dom.tableEmpty.classList.toggle('hidden',   state !== 'empty');
+      dom.tableWrapper.classList.toggle('hidden', state !== 'data');
+    }
+
+    /** Actualiza el indicador de estado de la conexión con la API. */
+    function setApiStatus(online) {
+      dom.apiDot.className  = `w-2 h-2 rounded-full ${online ? 'bg-green-500' : 'bg-red-500'}`;
+      dom.apiText.textContent = online ? 'API conectada' : 'API no disponible';
+    }
+
+    /**
+     * Muestra un toast de notificación temporal.
+     * @param {string} message - Texto a mostrar
+     * @param {'success'|'error'} type - Tipo de notificación
+     */
+    let toastTimeout;
+    function showToast(message, type = 'success') {
+      const toast = dom.toast;
+
+      // Limpiamos el timeout anterior por si el usuario envía
+      // dos formularios muy rápido
+      clearTimeout(toastTimeout);
+
+      dom.toastMsg.textContent = message;
+
+      // Aplicamos estilos según el tipo
+      const isSuccess = type === 'success';
+      toast.className = `fixed bottom-6 right-6 z-50 rounded-xl border px-5 py-4 text-sm max-w-xs shadow-2xl ${
+        isSuccess
+          ? 'bg-dark-800 border-green-800 text-green-400'
+          : 'bg-dark-800 border-red-800 text-red-400'
+      }`;
+
+      toast.classList.add('visible');
+
+      // Auto-ocultar tras 3.5 segundos
+      toastTimeout = setTimeout(() => {
+        toast.classList.remove('visible');
+      }, 3500);
+    }
+  </script>
+
+</body>
+</html>
