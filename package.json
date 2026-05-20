@@ -1,0 +1,23 @@
+{
+  "name": "fueltracker-api",
+  "version": "1.0.0",
+  "description": "API REST para el seguimiento de consumo de combustible",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "db:migrate": "node -e \"const url = require('dotenv').config().parsed.DATABASE_URL; require('child_process').execSync('psql ' + url + ' -f src/db/migrations/001_create_refuels.sql', {stdio: 'inherit'})\"",
+    "db:migrate:users": "node -e \"const url = require('dotenv').config().parsed.DATABASE_URL; require('child_process').execSync('psql ' + url + ' -f src/db/migrations/002_create_users.sql', {stdio: 'inherit'})\""
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.3",
+    "pg": "^8.12.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  }
+}
