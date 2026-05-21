@@ -477,7 +477,11 @@ async function handleSubmit(event) {
     km_since_last: dom.kmInput.value,
     liters_filled: dom.litersInput.value,
   };
-  if (dom.dateInput.value) payload.refuel_date = dom.dateInput.value;
+  // Enviar fecha en formato ISO completo para máxima compatibilidad
+  if (dom.dateInput.value) {
+    const dateObj = new Date(dom.dateInput.value + 'T00:00:00Z');
+    payload.refuel_date = dateObj.toISOString().split('T')[0];
+  }
   if (dom.priceInput.value) payload.price_per_liter = dom.priceInput.value;
   if (dom.notesInput.value) payload.notes = dom.notesInput.value;
 
@@ -535,8 +539,26 @@ function resetForm() {
 }
 
 function formatDate(isoDate) {
-  const d = new Date(isoDate + 'T00:00:00');
-  return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+  if (!isoDate) return '—';
+  
+  let dateObj;
+  // Manejar varios formatos posibles de fecha desde la BD
+  if (isoDate.includes('T')) {
+    // Es ISO completo (2025-12-31T00:00:00.000Z)
+    dateObj = new Date(isoDate);
+  } else if (isoDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+    // Es YYYY-MM-DD, agregar UTC para evitar problemas de zona horaria
+    dateObj = new Date(isoDate + 'T00:00:00Z');
+  } else {
+    // Intentar parseo genérico
+    dateObj = new Date(isoDate);
+  }
+  
+  if (isNaN(dateObj.getTime())) {
+    return 'Invalid Date';
+  }
+  
+  return dateObj.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 function setSubmitLoading(loading) {

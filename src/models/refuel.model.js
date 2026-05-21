@@ -38,6 +38,10 @@ const crear = async (datos, userId) => {
     notes = null,
   } = datos;
 
+  // Normalizar fecha a ISO 8601 completo para consistencia
+  // Esto asegura que PostgreSQL/Supabase siempre la almacene en el mismo formato
+  const normalizedDate = new Date(refuel_date).toISOString().split('T')[0];
+
   const avg_consumption = calcularConsumo(liters_filled, km_since_last);
 
   const resultado = await query(
@@ -46,7 +50,7 @@ const crear = async (datos, userId) => {
      VALUES
        ($1, $2, $3, $4, $5, $6, $7)
      RETURNING *`,
-    [refuel_date, km_since_last, liters_filled, price_per_liter, avg_consumption, notes, userId]
+    [normalizedDate, km_since_last, liters_filled, price_per_liter, avg_consumption, notes, userId]
   );
 
   return resultado.rows[0];
@@ -97,6 +101,9 @@ const actualizar = async (id, datos, userId) => {
     notes = null,
   } = datos;
 
+  // Normalizar fecha a ISO 8601 completo para consistencia
+  const normalizedDate = new Date(refuel_date).toISOString().split('T')[0];
+
   const avg_consumption = calcularConsumo(liters_filled, km_since_last);
 
   const resultado = await query(
@@ -109,7 +116,7 @@ const actualizar = async (id, datos, userId) => {
            notes           = $6
      WHERE id = $7 AND user_id = $8
      RETURNING *`,
-    [refuel_date, km_since_last, liters_filled, price_per_liter, avg_consumption, notes, id, userId]
+    [normalizedDate, km_since_last, liters_filled, price_per_liter, avg_consumption, notes, id, userId]
   );
 
   return resultado.rows[0] || null;
