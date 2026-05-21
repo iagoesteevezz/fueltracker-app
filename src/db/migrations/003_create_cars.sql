@@ -1,0 +1,28 @@
+-- 1. CREAR LA TABLA DE COCHES PRIMERO
+CREATE TABLE IF NOT EXISTS cars (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL,
+  brand VARCHAR(80) NOT NULL,
+  model VARCHAR(80) NOT NULL,
+  year INTEGER NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE cars
+  ADD CONSTRAINT fk_cars_user_id
+  FOREIGN KEY (user_id)
+  REFERENCES users(id)
+  ON DELETE CASCADE;
+
+CREATE INDEX IF NOT EXISTS idx_cars_user_id ON cars (user_id);
+CREATE INDEX IF NOT EXISTS idx_cars_created_at ON cars (created_at DESC);
+
+-- 2. MODIFICAR LA TABLA DE REPOSTAJES DESPUÉS
+ALTER TABLE refuels
+  ADD COLUMN car_id INTEGER;
+
+ALTER TABLE refuels
+  ADD CONSTRAINT fk_refuels_car_id
+  FOREIGN KEY (car_id)
+  REFERENCES cars(id)
+  ON DELETE SET NULL;

@@ -36,21 +36,20 @@ const crear = async (datos, userId) => {
     liters_filled,
     price_per_liter = null,
     notes = null,
+    car_id,
   } = datos;
 
-  // Normalizar fecha a ISO 8601 completo para consistencia
-  // Esto asegura que PostgreSQL/Supabase siempre la almacene en el mismo formato
   const normalizedDate = new Date(refuel_date).toISOString().split('T')[0];
 
   const avg_consumption = calcularConsumo(liters_filled, km_since_last);
 
   const resultado = await query(
     `INSERT INTO refuels
-       (refuel_date, km_since_last, liters_filled, price_per_liter, avg_consumption, notes, user_id)
+       (refuel_date, km_since_last, liters_filled, price_per_liter, avg_consumption, notes, user_id, car_id)
      VALUES
-       ($1, $2, $3, $4, $5, $6, $7)
+       ($1, $2, $3, $4, $5, $6, $7, $8)
      RETURNING *`,
-    [normalizedDate, km_since_last, liters_filled, price_per_liter, avg_consumption, notes, userId]
+    [normalizedDate, km_since_last, liters_filled, price_per_liter, avg_consumption, notes, userId, car_id]
   );
 
   return resultado.rows[0];
@@ -70,6 +69,7 @@ const obtenerTodos = async (userId) => {
        avg_consumption,
        notes,
        user_id,
+       car_id,
        created_at
      FROM refuels
      WHERE user_id = $1
@@ -99,9 +99,9 @@ const actualizar = async (id, datos, userId) => {
     liters_filled,
     price_per_liter = null,
     notes = null,
+    car_id = null,
   } = datos;
 
-  // Normalizar fecha a ISO 8601 completo para consistencia
   const normalizedDate = new Date(refuel_date).toISOString().split('T')[0];
 
   const avg_consumption = calcularConsumo(liters_filled, km_since_last);
@@ -113,10 +113,11 @@ const actualizar = async (id, datos, userId) => {
            liters_filled   = $3,
            price_per_liter = $4,
            avg_consumption = $5,
-           notes           = $6
-     WHERE id = $7 AND user_id = $8
+           notes           = $6,
+           car_id          = COALESCE($7, car_id)
+     WHERE id = $8 AND user_id = $9
      RETURNING *`,
-    [normalizedDate, km_since_last, liters_filled, price_per_liter, avg_consumption, notes, id, userId]
+    [normalizedDate, km_since_last, liters_filled, price_per_liter, avg_consumption, notes, car_id, id, userId]
   );
 
   return resultado.rows[0] || null;

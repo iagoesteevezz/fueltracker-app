@@ -11,16 +11,31 @@
 // ============================================================
 
 const refuelModel = require('../models/refuel.model');
+const carModel = require('../models/car.model');
 
 
 // ── POST /api/refuels ────────────────────────────────────────
 // Crea un nuevo repostaje. El usuario autenticado es propietario.
 const crearRepostaje = async (req, res) => {
   try {
-    // req.user viene del middleware de autenticación
     const userId = req.user.userId;
+    const { car_id } = req.body;
 
-    // Llamamos al modelo pasando los datos del body y el userId
+    if (!car_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'car_id es obligatorio para registrar un repostaje',
+      });
+    }
+
+    const auto = await carModel.obtenerPorIdYUsuario(Number(car_id), userId);
+    if (!auto) {
+      return res.status(404).json({
+        success: false,
+        message: 'El coche especificado no existe o no pertenece al usuario',
+      });
+    }
+
     const nuevoRepostaje = await refuelModel.crear(req.body, userId);
 
     return res.status(201).json({
@@ -76,12 +91,23 @@ const actualizarRepostaje = async (req, res) => {
   try {
     const refuelId = Number(req.params.id);
     const userId = req.user.userId;
+    const { car_id } = req.body;
 
     if (Number.isNaN(refuelId)) {
       return res.status(400).json({
         success: false,
         message: 'ID de repostaje inválido',
       });
+    }
+
+    if (car_id) {
+      const auto = await carModel.obtenerPorIdYUsuario(Number(car_id), userId);
+      if (!auto) {
+        return res.status(404).json({
+          success: false,
+          message: 'El coche especificado no existe o no pertenece al usuario',
+        });
+      }
     }
 
     const repostajeActualizado = await refuelModel.actualizar(refuelId, req.body, userId);

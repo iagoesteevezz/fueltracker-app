@@ -11,6 +11,7 @@ const cors    = require('cors');
 
 const refuelRoutes = require('./routes/refuel.routes');
 const userRoutes   = require('./routes/user.routes');
+const carRoutes    = require('./routes/car.routes');
 
 const app = express();
 
@@ -49,6 +50,7 @@ app.get('/health', (req, res) => {
 // crear una v2 en el futuro sin romper los clientes que ya usan v1.
 app.use('/api/v1/refuels', refuelRoutes);
 app.use('/api/v1/auth', userRoutes);
+app.use('/api/v1/cars', carRoutes);
 
 
 // ── Middleware de ruta no encontrada ─────────────────────────

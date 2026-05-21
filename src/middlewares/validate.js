@@ -17,7 +17,7 @@
 const validarRepostaje = (req, res, next) => {
   // Extraemos los campos del cuerpo de la petición.
   // Usamos desestructuración para que el código sea más legible.
-  const { km_since_last, liters_filled, refuel_date, price_per_liter } = req.body;
+  const { km_since_last, liters_filled, refuel_date, price_per_liter, car_id } = req.body;
 
   // Acumulamos todos los errores antes de responder.
   // Así el cliente recibe TODOS los problemas de una vez,
@@ -65,6 +65,14 @@ const validarRepostaje = (req, res, next) => {
     const precio = Number(price_per_liter);
     if (isNaN(precio) || precio < 0) {
       errors.push('price_per_liter debe ser un número positivo');
+    }
+  }
+
+  // ── car_id (opcional, pero si viene debe ser entero positivo) ──
+  if (car_id !== undefined && car_id !== null) {
+    const cocheId = Number(car_id);
+    if (!Number.isInteger(cocheId) || cocheId <= 0) {
+      errors.push('car_id debe ser un entero positivo');
     }
   }
 
