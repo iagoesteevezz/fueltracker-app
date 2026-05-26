@@ -8,6 +8,15 @@ let editModeId = null;
 let token = null;
 let currentSortField = null;   // Campo por el que se está ordenando
 let currentSortOrder = 'asc';  // 'asc' o 'desc'
+let stationsMap = null;
+let stationsLayerGroup = null;
+let stationsUserMarker = null;
+let stationsData = [];
+let allStationsData = [];
+let radiusCircle = null;
+let markersLayer = null;
+let userPosition = null;
+const STATION_RADIUS_KM = 15;
 
 const dom = {
   authScreen: document.getElementById('auth-screen'),
@@ -82,6 +91,12 @@ const dom = {
   toast: document.getElementById('toast'),
   toastMsg: document.getElementById('toast-message'),
   searchNotesInput: document.getElementById('search-notes-input'),
+  navStationsBtn: document.getElementById('nav-stations-btn'),
+  stationsView: document.getElementById('stations-view'),
+  stationsList: document.getElementById('cheapest-stations-list'),
+  map: document.getElementById('map'),
+  radiusSlider: document.getElementById('radius-slider'),
+  radiusLabel: document.getElementById('radius-label'),
 };
 
 let toastTimeout;
@@ -116,6 +131,18 @@ function setupFormListeners() {
   dom.openCarModalBtn.addEventListener('click', openCarModal);
   dom.closeCarModalBtn.addEventListener('click', closeCarModal);
   dom.brandHomeBtn.addEventListener('click', showDashboardView);
+  if (dom.navStationsBtn) {
+    dom.navStationsBtn.addEventListener('click', showStationsView);
+  }
+  if (dom.radiusSlider) {
+    dom.radiusSlider.addEventListener('input', (event) => {
+      const value = Number(event.target.value);
+      if (dom.radiusLabel) {
+        dom.radiusLabel.textContent = `Radio de búsqueda: ${value} km`;
+      }
+      updateMapRadius(value);
+    });
+  }
   dom.userProfileLink.addEventListener('click', (event) => {
     event.preventDefault();
     showProfileView();
@@ -265,19 +292,30 @@ function showAuthScreen() {
 }
 
 const showDashboardView = () => {
-  if (!dom.dashboardView || !dom.profileView) return;
+  if (!dom.dashboardView || !dom.profileView || !dom.stationsView) return;
   dom.dashboardView.classList.remove('hidden');
   dom.profileView.classList.add('hidden');
+  dom.stationsView.classList.add('hidden');
   closeUserDropdown();
 };
 
 const showProfileView = () => {
-  if (!dom.dashboardView || !dom.profileView) return;
+  if (!dom.dashboardView || !dom.profileView || !dom.stationsView) return;
   dom.dashboardView.classList.add('hidden');
   dom.profileView.classList.remove('hidden');
+  dom.stationsView.classList.add('hidden');
   loadProfileStats();
   renderProfileCars();
   closeUserDropdown();
+};
+
+const showStationsView = () => {
+  if (!dom.dashboardView || !dom.profileView || !dom.stationsView) return;
+  dom.dashboardView.classList.add('hidden');
+  dom.profileView.classList.add('hidden');
+  dom.stationsView.classList.remove('hidden');
+  closeUserDropdown();
+  initStationsMap();
 };
 
 const openEditProfileModal = () => {
@@ -1325,6 +1363,274 @@ function showToast(message, type = 'success') {
   dom.toast.className = `fixed bottom-6 right-6 z-50 rounded-xl border px-5 py-4 text-sm max-w-xs shadow-2xl ${isSuccess ? 'bg-dark-800 border-green-800 text-green-400' : 'bg-dark-800 border-red-800 text-red-400'}`;
   dom.toast.classList.add('visible');
   toastTimeout = setTimeout(() => dom.toast.classList.remove('visible'), 3500);
+}
+
+function toDecimalNumber(value) {
+  if (value === null || typeof value === 'undefined') return null;
+  const normalized = String(value).trim().replace(',', '.');
+  if (!normalized) return null;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function parseStationsPayload(contents) {
+  const raw = String(contents || '').trim();
+  if (!raw) {
+    throw new Error('La respuesta de la API está vacía');
+  }
+
+  const jsonText = (() => {
+    const firstBrace = raw.indexOf('{');
+    const lastBrace = raw.lastIndexOf('}');
+
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+      return raw.slice(firstBrace, lastBrace + 1);
+    }
+
+    return raw;
+  })();
+
+  const parsed = JSON.parse(jsonText);
+  return Array.isArray(parsed?.ListaEESSPrecio)
+    ? parsed.ListaEESSPrecio
+    : Array.isArray(parsed?.listaEESSPrecio)
+      ? parsed.listaEESSPrecio
+      : [];
+}
+
+function haversineDistanceKm(lat1, lon1, lat2, lon2) {
+  const toRad = (value) => (value * Math.PI) / 180;
+  const earthRadiusKm = 6371;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+
+  return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function renderStationsList(stations) {
+  if (!dom.stationsList) return;
+
+  if (!stations.length) {
+    dom.stationsList.innerHTML = `
+      <div class="rounded-xl border border-dark-600 bg-dark-800/80 px-4 py-5 text-sm text-ink-muted">
+        No se encontraron gasolineras en el radio seleccionado.
+      </div>`;
+    return;
+  }
+
+  dom.stationsList.innerHTML = stations.slice(0, 5).map((station) => `
+    <article class="rounded-xl border border-dark-600 bg-dark-800/85 p-4 shadow-lg">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <h3 class="font-display text-lg font-600 uppercase tracking-wider text-ink">${station.name}</h3>
+        </div>
+        <span class="rounded-full bg-fuel/10 px-2.5 py-1 text-xs font-semibold text-fuel">${station.distanceKm.toFixed(1)} km</span>
+      </div>
+      <p class="mt-3 text-sm text-ink-muted">${station.address}</p>
+      <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
+        <div class="rounded-lg bg-dark-700/70 px-3 py-2">
+          <p class="text-[11px] uppercase tracking-[0.2em] text-ink-faint">Gasolina 95 E5</p>
+          <p class="mt-1 font-mono text-fuel">${station.gasolina95 === null || typeof station.gasolina95 === 'undefined' ? 'No disponible' : `${station.gasolina95.toFixed(3)} €`}</p>
+        </div>
+        <div class="rounded-lg bg-dark-700/70 px-3 py-2">
+          <p class="text-[11px] uppercase tracking-[0.2em] text-ink-faint">Gasóleo A</p>
+          <p class="mt-1 font-mono text-fuel">${station.gasoleoA === null || typeof station.gasoleoA === 'undefined' ? 'No disponible' : `${station.gasoleoA.toFixed(3)} €`}</p>
+        </div>
+      </div>
+    </article>
+  `).join('');
+}
+
+function updateMapRadius(km) {
+  if (!stationsMap || !userPosition || !markersLayer) return;
+
+  const radiusMeters = Number(km) * 1000;
+
+  if (radiusCircle) {
+    stationsMap.removeLayer(radiusCircle);
+    radiusCircle = null;
+  }
+
+  radiusCircle = L.circle([userPosition.lat, userPosition.lon], {
+    radius: radiusMeters,
+    color: '#f97316',
+    weight: 2,
+    fillColor: '#f97316',
+    fillOpacity: 0.08,
+  }).addTo(stationsMap);
+
+  markersLayer.clearLayers();
+
+  const filteredStations = allStationsData
+    .filter((station) => Number.isFinite(station.lat) && Number.isFinite(station.lon) && station.distanceKm <= Number(km))
+    .sort((a, b) => (a.gasolina95 ?? Number.POSITIVE_INFINITY) - (b.gasolina95 ?? Number.POSITIVE_INFINITY));
+
+  filteredStations.forEach((station) => {
+    const formatPrice = (value) => {
+      if (value === null || typeof value === 'undefined' || value === '') {
+        return 'No disponible';
+      }
+      return `${Number(value).toFixed(3)} €`;
+    };
+
+    const popupText = `
+      <strong>${station.name}</strong><br>
+      ${station.address}<br>
+      <span>Gasolina 95 E5: ${formatPrice(station.gasolina95)}</span><br>
+      <span>Gasóleo A: ${formatPrice(station.gasoleoA)}</span>
+    `;
+
+    L.marker([station.lat, station.lon])
+      .addTo(markersLayer)
+      .bindPopup(popupText);
+  });
+
+  renderStationsList(filteredStations);
+}
+
+async function initStationsMap() {
+  if (!dom.map) return;
+
+  const defaultCenter = [40.4168, -3.7038];
+
+  if (!stationsMap) {
+    stationsMap = L.map('map', {
+      zoomControl: true,
+      attributionControl: false,
+    }).setView(defaultCenter, 8);
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      subdomains: 'abcd',
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    }).addTo(stationsMap);
+
+    stationsLayerGroup = L.layerGroup().addTo(stationsMap);
+    markersLayer = L.layerGroup().addTo(stationsMap);
+  } else {
+    stationsMap.invalidateSize();
+  }
+
+  if (!stationsLayerGroup) {
+    stationsLayerGroup = L.layerGroup().addTo(stationsMap);
+  }
+
+  if (!markersLayer) {
+    markersLayer = L.layerGroup().addTo(stationsMap);
+  }
+
+  stationsLayerGroup.clearLayers();
+  markersLayer.clearLayers();
+  stationsUserMarker = null;
+  stationsData = [];
+  allStationsData = [];
+  userPosition = null;
+  if (radiusCircle) {
+    stationsMap.removeLayer(radiusCircle);
+    radiusCircle = null;
+  }
+  renderStationsList([]);
+
+  const onPositionSuccess = async (position) => {
+    const userLat = position.coords.latitude;
+    const userLon = position.coords.longitude;
+    userPosition = { lat: userLat, lon: userLon };
+
+    stationsMap.setView([userLat, userLon], 11);
+
+    stationsUserMarker = L.marker([userLat, userLon], { title: 'Tú estás aquí' })
+      .addTo(stationsLayerGroup)
+      .bindPopup('Tú estás aquí')
+      .openPopup();
+
+    try {
+      if (dom.stationsList) {
+        dom.stationsList.innerHTML = `
+          <div class="rounded-xl border border-dark-600 bg-dark-800/80 px-4 py-5 text-sm text-ink-muted animate-pulse">
+            📡 Buscando gasolineras y precios en tiempo real...
+          </div>`;
+      }
+
+      const proxyUrl = 'https://corsproxy.io/?https%3A%2F%2Fsedeaplicaciones.minetur.gob.es%2FServiciosRESTCarburantes%2FPreciosCarburantes%2FEstacionesTerrestres%2FFiltroProvincia%2F35';      const response = await fetch(proxyUrl);
+      const data = await response.json();
+      const stations = data.ListaEESSPrecio || [];
+
+      // DEBUG CORREGIDO: Buscamos en los datos crudos directamente de la API
+      console.log("Muestra API Gran Canaria (Datos Crudos):", stations.find(s => s['Provincia'] === 'PALMAS (LAS)'));
+
+      stationsData = stations
+        .map((station) => {
+          // Búsqueda dinámica de propiedades para evitar fallos por espacios en blanco del gobierno
+          const latKey = Object.keys(station).find(k => k.includes('Latitud'));
+          const lonKey = Object.keys(station).find(k => k.includes('Longitud'));
+          
+          if (!latKey || !lonKey) return null;
+
+          const lat = parseFloat(String(station[latKey] || '').replace(',', '.').trim());
+          const lon = parseFloat(String(station[lonKey] || '').replace(',', '.').trim());
+
+          if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+
+          const distanceKm = haversineDistanceKm(userLat, userLon, lat, lon);
+          
+          // Parseo manual seguro para evitar que toDecimalNumber rompa el código
+          const gas95Str = String(station['Precio Gasolina 95 E5'] || '').replace(',', '.').trim();
+          const gasAStr = String(station['Precio Gasoleo A'] || '').replace(',', '.').trim();
+          
+          const gasolina95 = gas95Str !== '' ? parseFloat(gas95Str) : null;
+          const gasoleoA = gasAStr !== '' ? parseFloat(gasAStr) : null;
+
+          return {
+            id: station.IDEESS || `${station['C.P.'] || ''}-${station['Rótulo'] || ''}`,
+            name: station['Rótulo'] || 'Gasolinera',
+            address: `${station.Dirección || ''}${station.Localidad ? `, ${station.Localidad}` : ''}`.replace(/^,\s*/, ''),
+            lat,
+            lon,
+            distanceKm,
+            gasolina95,
+            gasoleoA,
+          };
+        })
+        .filter(Boolean)
+        .sort((a, b) => {
+          const priceA = a.gasolina95 ?? Number.POSITIVE_INFINITY;
+          const priceB = b.gasolina95 ?? Number.POSITIVE_INFINITY;
+          return priceA - priceB;
+        });
+
+      allStationsData = stationsData;
+      console.log("1. Total de gasolineras en toda España procesadas:", allStationsData.length);
+      
+      const enCanarias = allStationsData.filter(s => s.lat < 30); // Todo lo que esté por debajo de la latitud de la península
+      console.log("2. Gasolineras detectadas en Canarias:", enCanarias.length);
+      
+      if (enCanarias.length > 0) {
+          console.log("3. Muestra de una gasolinera canaria con su distancia a ti:", enCanarias[0]);
+      }
+      updateMapRadius(Number(dom.radiusSlider?.value || 50));
+    } catch (error) {
+      console.error('[initStationsMap]', error);
+      showToast('No se pudieron cargar las gasolineras cercanas', 'error');
+    }
+  };
+
+  const onPositionError = (error) => {
+    console.error('[initStationsMap] geolocation error', error);
+    showToast('No se pudo obtener tu ubicación para mostrar gasolineras cercanas', 'error');
+  };
+
+  if (!navigator.geolocation) {
+    showToast('Tu navegador no soporta geolocalización', 'error');
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(onPositionSuccess, onPositionError, {
+    enableHighAccuracy: true,
+    timeout: 10000,
+    maximumAge: 600000,
+  });
 }
 
 const openCarModal = () => {

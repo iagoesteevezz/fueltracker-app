@@ -13,10 +13,10 @@ const app = express();
 
 // ── Middlewares globales ─────────────────────────────────────
 
-// Configuración de CORS activa para que tu Live Server (puerto 5500) pueda hablar con la API
+// Configuración de CORS activa para que el frontend local pueda hablar con la API
 app.use(cors({
-  origin: 'http://127.0.0.1:5500', 
-  credentials: true
+  origin: ['http://localhost:5500', 'http://127.0.0.1:5500'],
+  credentials: true,
 }));
 
 // Parsea el body de las peticiones con Content-Type: application/json
