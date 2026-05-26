@@ -417,8 +417,11 @@
 
           <div class="flex items-center gap-3 bg-dark-800/80 p-2 px-4 rounded-xl border border-dark-600">
             <label id="radius-label" class="text-sm text-slate-300 font-medium whitespace-nowrap min-w-[100px]">Radio: 50 km</label>
-            <input type="range" id="radius-slider" min="1" max="100" value="50"
-              class="w-32 h-1.5 bg-dark-600 rounded-lg appearance-none cursor-pointer accent-[#f97316]">
+            <input type="range" id="radius-slider" min="1" max="100" value="50" 
+            class="w-32 h-1.5 bg-dark-600 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none 
+            [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-[#f97316] 
+            [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-md [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 
+            [&::-moz-range-thumb]:bg-[#f97316] [&::-moz-range-thumb]:border-none [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:shadow-md">
           </div>
         </div>
 
@@ -427,7 +430,22 @@
             <div id="map" class="h-[600px] w-full rounded-xl z-0 border border-dark-600 bg-dark-800"></div>
           </div>
 
-          <div id="cheapest-stations-list" class="flex flex-col gap-4"></div>
+          <div class="flex flex-col gap-4">
+            <div class="flex gap-2">
+              <select id="sort-stations" class="flex-1 bg-dark-800/80 text-sm text-slate-300 p-2 px-3 rounded-xl border border-dark-600 focus:outline-none focus:border-fuel transition">
+                <option value="gasolina">Ordenar por: Precio Gasolina 95</option>
+                <option value="gasoil">Ordenar por: Precio Gasóleo A</option>
+                <option value="distancia">Ordenar por: Más cercanas</option>
+              </select>
+              <button id="favorites-toggle" class="bg-dark-800/80 text-slate-400 hover:text-fuel hover:border-fuel border border-dark-600 p-2 px-4 rounded-xl transition-colors flex items-center gap-2 font-medium text-sm whitespace-nowrap" title="Mostrar solo favoritas">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="12 2 15.09 10.26 24 10.35 17.18 16.54 19.34 24.81 12 18.65 4.66 24.81 6.82 16.54 0 10.35 8.91 10.26 12 2"></polygon>
+                </svg>
+                <span>Favoritos</span>
+              </button>
+            </div>
+            <div id="cheapest-stations-list" class="flex flex-col gap-4"></div>
+          </div>
         </div>
       </main>
 

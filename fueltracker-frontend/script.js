@@ -16,6 +16,8 @@ let allStationsData = [];
 let radiusCircle = null;
 let markersLayer = null;
 let userPosition = null;
+let favoriteStations = JSON.parse(localStorage.getItem('fuelTracker_favorites')) || [];
+let showOnlyFavorites = false;
 const STATION_RADIUS_KM = 15;
 
 const dom = {
@@ -97,6 +99,8 @@ const dom = {
   map: document.getElementById('map'),
   radiusSlider: document.getElementById('radius-slider'),
   radiusLabel: document.getElementById('radius-label'),
+  sortStations: document.getElementById('sort-stations'),
+  favoritesToggle: document.getElementById('favorites-toggle'),
 };
 
 let toastTimeout;
@@ -141,6 +145,22 @@ function setupFormListeners() {
         dom.radiusLabel.textContent = `Radio de búsqueda: ${value} km`;
       }
       updateMapRadius(value);
+    });
+  }
+  if (dom.sortStations) {
+    dom.sortStations.addEventListener('change', () => {
+      updateMapRadius(Number(dom.radiusSlider?.value || 50));
+    });
+  }
+  if (dom.favoritesToggle) {
+    dom.favoritesToggle.addEventListener('click', () => {
+      showOnlyFavorites = !showOnlyFavorites;
+      dom.favoritesToggle.classList.toggle('bg-fuel/20', showOnlyFavorites);
+      dom.favoritesToggle.classList.toggle('text-fuel', showOnlyFavorites);
+      dom.favoritesToggle.classList.toggle('border-fuel', showOnlyFavorites);
+      dom.favoritesToggle.classList.toggle('text-slate-400', !showOnlyFavorites);
+      dom.favoritesToggle.classList.toggle('border-dark-600', !showOnlyFavorites);
+      updateMapRadius(Number(dom.radiusSlider?.value || 50));
     });
   }
   dom.userProfileLink.addEventListener('click', (event) => {
@@ -1420,13 +1440,26 @@ function renderStationsList(stations) {
     return;
   }
 
+  const starSvg = (isFavorite) => {
+    if (isFavorite) {
+      return `<svg width="20" height="20" viewBox="0 0 24 24" fill="#f97316" stroke="#f97316" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 10.26 24 10.35 17.18 16.54 19.34 24.81 12 18.65 4.66 24.81 6.82 16.54 0 10.35 8.91 10.26 12 2"></polygon></svg>`;
+    } else {
+      return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-500"><polygon points="12 2 15.09 10.26 24 10.35 17.18 16.54 19.34 24.81 12 18.65 4.66 24.81 6.82 16.54 0 10.35 8.91 10.26 12 2"></polygon></svg>`;
+    }
+  };
+
   dom.stationsList.innerHTML = stations.slice(0, 5).map((station) => `
-    <article class="rounded-xl border border-dark-600 bg-dark-800/85 p-4 shadow-lg">
+    <article class="rounded-xl border border-dark-600 bg-dark-800/85 p-4 shadow-lg cursor-pointer hover:border-fuel transition-colors" data-station-id="${station.id}" data-lat="${station.lat}" data-lon="${station.lon}">
       <div class="flex items-start justify-between gap-3">
-        <div>
+        <div class="flex-1">
           <h3 class="font-display text-lg font-600 uppercase tracking-wider text-ink">${station.name}</h3>
         </div>
-        <span class="rounded-full bg-fuel/10 px-2.5 py-1 text-xs font-semibold text-fuel">${station.distanceKm.toFixed(1)} km</span>
+        <div class="flex items-center gap-2">
+          <button class="p-1 hover:bg-dark-700/50 rounded transition-colors flex items-center justify-center" onclick="toggleFavorite('${station.id}', event)" title="${favoriteStations.includes(station.id) ? 'Quitar de favoritas' : 'Añadir a favoritas'}">
+            ${starSvg(favoriteStations.includes(station.id))}
+          </button>
+          <span class="rounded-full bg-fuel/10 px-2.5 py-1 text-xs font-semibold text-fuel whitespace-nowrap">${station.distanceKm.toFixed(1)} km</span>
+        </div>
       </div>
       <p class="mt-3 text-sm text-ink-muted">${station.address}</p>
       <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
@@ -1441,6 +1474,45 @@ function renderStationsList(stations) {
       </div>
     </article>
   `).join('');
+
+  // Agregar event delegation para los clics en las tarjetas
+  dom.stationsList.addEventListener('click', (event) => {
+    const article = event.target.closest('article[data-station-id]');
+    if (!article || !stationsMap) return;
+
+    const lat = parseFloat(article.getAttribute('data-lat'));
+    const lon = parseFloat(article.getAttribute('data-lon'));
+    const stationId = article.getAttribute('data-station-id');
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+
+    // Animar el mapa hacia la gasolinera
+    stationsMap.flyTo([lat, lon], 15, { duration: 1.5 });
+
+    // Buscar y abrir el popup del marcador de esa gasolinera
+    markersLayer.eachLayer((marker) => {
+      const markerLatLng = marker.getLatLng();
+      if (Math.abs(markerLatLng.lat - lat) < 0.0001 && Math.abs(markerLatLng.lng - lon) < 0.0001) {
+        marker.openPopup();
+      }
+    });
+  });
+}
+
+function toggleFavorite(stationId, event) {
+  event.stopPropagation();
+  
+  const index = favoriteStations.indexOf(stationId);
+  if (index > -1) {
+    favoriteStations.splice(index, 1);
+  } else {
+    favoriteStations.push(stationId);
+  }
+  
+  localStorage.setItem('fuelTracker_favorites', JSON.stringify(favoriteStations));
+  
+  // Refrescar la interfaz
+  updateMapRadius(Number(dom.radiusSlider?.value || 50));
 }
 
 function updateMapRadius(km) {
@@ -1457,15 +1529,37 @@ function updateMapRadius(km) {
     radius: radiusMeters,
     color: '#f97316',
     weight: 2,
+    dashArray: '8, 8',
     fillColor: '#f97316',
-    fillOpacity: 0.08,
+    fillOpacity: 0.08
   }).addTo(stationsMap);
 
   markersLayer.clearLayers();
 
+  const sortType = dom.sortStations?.value || 'gasolina';
+
   const filteredStations = allStationsData
-    .filter((station) => Number.isFinite(station.lat) && Number.isFinite(station.lon) && station.distanceKm <= Number(km))
-    .sort((a, b) => (a.gasolina95 ?? Number.POSITIVE_INFINITY) - (b.gasolina95 ?? Number.POSITIVE_INFINITY));
+    .filter((station) => {
+      const withinRadius = Number.isFinite(station.lat) && Number.isFinite(station.lon) && station.distanceKm <= Number(km);
+      const isFavorite = favoriteStations.includes(station.id);
+      
+      // Si el toggle de favoritos está activo, filtrar solo favoritos
+      if (showOnlyFavorites) {
+        return withinRadius && isFavorite;
+      }
+      
+      return withinRadius;
+    })
+    .sort((a, b) => {
+      if (sortType === 'gasolina') {
+        return (a.gasolina95 ?? Number.POSITIVE_INFINITY) - (b.gasolina95 ?? Number.POSITIVE_INFINITY);
+      } else if (sortType === 'gasoil') {
+        return (a.gasoleoA ?? Number.POSITIVE_INFINITY) - (b.gasoleoA ?? Number.POSITIVE_INFINITY);
+      } else if (sortType === 'distancia') {
+        return a.distanceKm - b.distanceKm;
+      }
+      return 0;
+    });
 
   filteredStations.forEach((station) => {
     const formatPrice = (value) => {
@@ -1540,7 +1634,13 @@ async function initStationsMap() {
 
     stationsMap.setView([userLat, userLon], 11);
 
-    stationsUserMarker = L.marker([userLat, userLon], { title: 'Tú estás aquí' })
+    const userIcon = L.divIcon({
+      className: 'custom-user-icon',
+      html: '<div class="w-5 h-5 bg-[#f97316] rounded-full border-2 border-white shadow-[0_0_15px_rgba(249,115,22,0.8)] animate-pulse"></div>',
+      iconSize: [20, 20],
+      iconAnchor: [10, 10]
+    });
+    stationsUserMarker = L.marker([userLat, userLon], { icon: userIcon, title: 'Tú estás aquí' })
       .addTo(stationsLayerGroup)
       .bindPopup('Tú estás aquí')
       .openPopup();
