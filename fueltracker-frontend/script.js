@@ -32,6 +32,7 @@ const dom = {
   carModalForm: document.getElementById('car-modal-form'),
   carBrandInput: document.getElementById('car_brand'),
   carModelInput: document.getElementById('car_model'),
+  carModelManualInput: document.getElementById('car-model-manual'),
   carYearInput: document.getElementById('car_year'),
   carModalSubmitBtn: document.getElementById('car-modal-submit-btn'),
   activeCarSelect: document.getElementById('active-car-select'),
@@ -110,6 +111,7 @@ function setupFormListeners() {
   dom.form.addEventListener('submit', handleSubmit);
   dom.carModalForm.addEventListener('submit', handleCarSubmit);
   dom.carBrandInput.addEventListener('change', handleCarBrandChange);
+  dom.carModelInput.addEventListener('change', handleCarModelChange);
   dom.activeCarSelect.addEventListener('change', handleActiveCarChange);
   dom.openCarModalBtn.addEventListener('click', openCarModal);
   dom.closeCarModalBtn.addEventListener('click', closeCarModal);
@@ -550,8 +552,12 @@ const fetchCarModels = async (brand) => {
       .filter(Boolean)
       .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
 
-    dom.carModelInput.innerHTML = '<option value="">Selecciona un modelo...</option>' + models.map((model) => `<option value="${model}">${model}</option>`).join('');
+    dom.carModelInput.innerHTML = '<option value="">Selecciona un modelo...</option>' + models.map((model) => `<option value="${model}">${model}</option>`).join('') + '<option value="otro">🔄 No encuentro mi modelo... (Escribir a mano)</option>';
     dom.carModelInput.disabled = false;
+    dom.carModelInput.classList.remove('hidden');
+    dom.carModelManualInput.classList.add('hidden');
+    dom.carModelManualInput.removeAttribute('required');
+    dom.carModelManualInput.value = '';
   } catch (error) {
     console.error('[fetchCarModels]', error);
     dom.carModelInput.innerHTML = '<option value="">No se pudieron cargar los modelos</option>';
@@ -565,10 +571,29 @@ const handleCarBrandChange = async (event) => {
   if (!selectedBrand) {
     dom.carModelInput.innerHTML = '<option value="">Selecciona una marca primero...</option>';
     dom.carModelInput.disabled = true;
+    dom.carModelInput.classList.remove('hidden');
+    dom.carModelManualInput.classList.add('hidden');
+    dom.carModelManualInput.removeAttribute('required');
+    dom.carModelManualInput.value = '';
     return;
   }
 
   await fetchCarModels(selectedBrand);
+};
+
+const handleCarModelChange = () => {
+  if (dom.carModelInput.value === 'otro') {
+    dom.carModelInput.classList.add('hidden');
+    dom.carModelManualInput.classList.remove('hidden');
+    dom.carModelManualInput.setAttribute('required', 'required');
+    dom.carModelManualInput.focus();
+    return;
+  }
+
+  dom.carModelInput.classList.remove('hidden');
+  dom.carModelManualInput.classList.add('hidden');
+  dom.carModelManualInput.removeAttribute('required');
+  dom.carModelManualInput.value = '';
 };
 
 async function createCar(data) {
@@ -589,9 +614,13 @@ async function createCar(data) {
 const handleCarSubmit = async (event) => {
   event.preventDefault();
 
+  const selectedModel = dom.carModelInput.value.trim();
+  const manualModel = dom.carModelManualInput.value.trim();
+  const modelValue = selectedModel === 'otro' ? manualModel : selectedModel;
+
   const payload = {
     brand: dom.carBrandInput.value.trim(),
-    model: dom.carModelInput.value.trim(),
+    model: modelValue,
     year: dom.carYearInput.value.trim(),
   };
 
@@ -1307,6 +1336,10 @@ const openCarModal = () => {
   dom.carBrandInput.disabled = true;
   dom.carModelInput.innerHTML = '<option value="">Selecciona una marca primero...</option>';
   dom.carModelInput.disabled = true;
+  dom.carModelInput.classList.remove('hidden');
+  dom.carModelManualInput.classList.add('hidden');
+  dom.carModelManualInput.removeAttribute('required');
+  dom.carModelManualInput.value = '';
 
   fetchCarBrands();
 };
@@ -1321,4 +1354,8 @@ const closeCarModal = () => {
   dom.carBrandInput.disabled = false;
   dom.carModelInput.innerHTML = '<option value="">Selecciona una marca primero...</option>';
   dom.carModelInput.disabled = true;
+  dom.carModelInput.classList.remove('hidden');
+  dom.carModelManualInput.classList.add('hidden');
+  dom.carModelManualInput.removeAttribute('required');
+  dom.carModelManualInput.value = '';
 };
