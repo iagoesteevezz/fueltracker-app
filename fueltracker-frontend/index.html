@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es" class="dark">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -7,7 +8,9 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
-  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap"
+    rel="stylesheet" />
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -18,14 +21,14 @@
       theme: {
         extend: {
           colors: {
-            fuel:  { DEFAULT: '#f97316', dim: '#7c3a1a', glow: '#f9731620' },
-            dark:  { 900: '#07090d', 800: '#0d1117', 700: '#161b22', 600: '#21262d', 500: '#30363d' },
-            ink:   { DEFAULT: '#e6edf3', muted: '#8b949e', faint: '#484f58' },
+            fuel: { DEFAULT: '#f97316', dim: '#7c3a1a', glow: '#f9731620' },
+            dark: { 900: '#07090d', 800: '#0d1117', 700: '#161b22', 600: '#21262d', 500: '#30363d' },
+            ink: { DEFAULT: '#e6edf3', muted: '#8b949e', faint: '#484f58' },
           },
           fontFamily: {
             display: ['"Barlow Condensed"', 'sans-serif'],
-            body:    ['"DM Sans"', 'sans-serif'],
-            mono:    ['"JetBrains Mono"', 'monospace'],
+            body: ['"DM Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
           },
         },
       },
@@ -39,36 +42,65 @@
   <header class="border-b border-dark-600 bg-dark-800/80 backdrop-blur-sm sticky top-0 z-10">
     <div class="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <div class="w-8 h-8 rounded-lg bg-fuel/10 border border-fuel/30 flex items-center justify-center">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 22V8l7-6 7 6v14"/>
-            <path d="M10 22V13h4v9"/>
-            <path d="M17 8h2a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/>
-          </svg>
-        </div>
-        <span class="font-display text-xl font-600 tracking-wider text-ink uppercase">
-          Fuel<span class="text-fuel">Tracker</span>
-        </span>
-      </div>
-      <div id="header-right" class="flex items-center gap-3">
-        <div class="flex items-center gap-2">
-          <label for="active-car-select" class="text-xs font-mono uppercase tracking-widest text-ink-faint hidden sm:inline">Coche activo</label>
-          <select id="active-car-select" class="fuel-input bg-dark-700 border border-dark-500 rounded-lg px-3 py-2 text-sm text-ink transition-colors min-w-[180px]">
-            <option value="">Cargando coches...</option>
-          </select>
-        </div>
-
-        <button id="open-car-modal-btn" class="bg-fuel hover:bg-fuel/90 text-white p-2 rounded-lg transition-colors" aria-label="Registrar coche">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11h14"/><path d="M12 5v14"/></svg>
+        <button id="brand-home-btn" type="button"
+          class="flex items-center gap-3 rounded-lg px-1 py-1 transition hover:bg-dark-700/40">
+          <div class="w-8 h-8 rounded-lg bg-fuel/10 border border-fuel/30 flex items-center justify-center">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 22V8l7-6 7 6v14" />
+              <path d="M10 22V13h4v9" />
+              <path d="M17 8h2a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2" />
+            </svg>
+          </div>
+          <span class="font-display text-xl font-600 tracking-wider text-ink uppercase">
+            Fuel<span class="text-fuel">Tracker</span>
+          </span>
         </button>
 
         <div class="flex items-center gap-2 text-xs font-mono text-ink-muted">
           <div id="api-status-dot" class="w-2 h-2 rounded-full bg-dark-500"></div>
           <span id="api-status-text">Conectando...</span>
         </div>
-        <button id="logout-btn" class="hidden bg-dark-700 hover:bg-dark-600 text-ink text-xs font-display uppercase tracking-wider px-4 py-2 rounded-lg transition-colors">
-          Cerrar sesión
+      </div>
+
+      <div id="header-right" class="flex items-center gap-3">
+        <div class="flex items-center gap-2">
+          <label for="active-car-select"
+            class="text-xs font-mono uppercase tracking-widest text-ink-faint hidden sm:inline">Coche activo</label>
+          <select id="active-car-select"
+            class="fuel-input bg-dark-700 border border-dark-500 rounded-lg px-3 py-2 text-sm text-ink transition-colors min-w-[180px]">
+            <option value="">Cargando coches...</option>
+          </select>
+        </div>
+
+        <button id="open-car-modal-btn" class="bg-fuel hover:bg-fuel/90 text-white p-2 rounded-lg transition-colors"
+          aria-label="Registrar coche">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 11h14" />
+            <path d="M12 5v14" />
+          </svg>
         </button>
+
+        <div class="relative">
+          <button id="user-avatar-btn" type="button"
+            class="flex h-10 w-10 items-center justify-center rounded-full border border-fuel/30 bg-dark-700 text-sm font-semibold text-fuel transition hover:border-fuel/60 hover:bg-fuel/10 focus:outline-none focus:ring-2 focus:ring-fuel/40"
+            aria-haspopup="true" aria-expanded="false">
+            <span id="user-avatar-label">U</span>
+          </button>
+
+          <div id="user-dropdown"
+            class="hidden absolute right-0 top-full mt-2 w-44 rounded-xl border border-dark-600 bg-dark-800/95 p-2 shadow-2xl backdrop-blur-sm">
+            <a id="user-profile-link" href="#"
+              class="flex items-center rounded-lg px-3 py-2 text-sm text-ink transition hover:bg-dark-700/70 hover:text-fuel">
+              Mi Perfil
+            </a>
+            <button id="user-logout-btn" type="button"
+              class="flex w-full items-center rounded-lg px-3 py-2 text-left text-sm text-ink transition hover:bg-red-500/10 hover:text-red-300">
+              Cerrar Sesión
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </header>
@@ -91,24 +123,31 @@
               <label class="block text-xs font-display uppercase tracking-widest text-ink-muted mb-1.5">
                 Nombre de usuario <span class="text-fuel">*</span>
               </label>
-              <input type="text" id="register-username" placeholder="juanperez" class="fuel-input w-full bg-dark-700 border border-dark-500 rounded-lg px-3 py-2.5 text-sm text-ink transition-colors" required />
+              <input type="text" id="register-username" placeholder="juanperez"
+                class="fuel-input w-full bg-dark-700 border border-dark-500 rounded-lg px-3 py-2.5 text-sm text-ink transition-colors"
+                required />
             </div>
 
             <div>
               <label class="block text-xs font-display uppercase tracking-widest text-ink-muted mb-1.5">
                 Email <span class="text-fuel">*</span>
               </label>
-              <input type="email" id="register-email" placeholder="juan@example.com" class="fuel-input w-full bg-dark-700 border border-dark-500 rounded-lg px-3 py-2.5 text-sm text-ink transition-colors" required />
+              <input type="email" id="register-email" placeholder="juan@example.com"
+                class="fuel-input w-full bg-dark-700 border border-dark-500 rounded-lg px-3 py-2.5 text-sm text-ink transition-colors"
+                required />
             </div>
 
             <div>
               <label class="block text-xs font-display uppercase tracking-widest text-ink-muted mb-1.5">
                 Contraseña <span class="text-fuel">*</span>
               </label>
-              <input type="password" id="register-password" placeholder="••••••" class="fuel-input w-full bg-dark-700 border border-dark-500 rounded-lg px-3 py-2.5 text-sm text-ink transition-colors" required />
+              <input type="password" id="register-password" placeholder="••••••"
+                class="fuel-input w-full bg-dark-700 border border-dark-500 rounded-lg px-3 py-2.5 text-sm text-ink transition-colors"
+                required />
             </div>
 
-            <button type="submit" id="register-btn" class="w-full bg-fuel hover:bg-fuel/90 active:scale-[0.98] text-white font-display uppercase tracking-widest text-sm font-600 py-3 rounded-lg transition-all duration-150 disabled:opacity-50">
+            <button type="submit" id="register-btn"
+              class="w-full bg-fuel hover:bg-fuel/90 active:scale-[0.98] text-white font-display uppercase tracking-widest text-sm font-600 py-3 rounded-lg transition-all duration-150 disabled:opacity-50">
               <span id="register-text">Registrarse</span>
             </button>
           </form>
@@ -125,17 +164,22 @@
               <label class="block text-xs font-display uppercase tracking-widest text-ink-muted mb-1.5">
                 Email <span class="text-fuel">*</span>
               </label>
-              <input type="email" id="login-email" placeholder="juan@example.com" class="fuel-input w-full bg-dark-700 border border-dark-500 rounded-lg px-3 py-2.5 text-sm text-ink transition-colors" required />
+              <input type="email" id="login-email" placeholder="juan@example.com"
+                class="fuel-input w-full bg-dark-700 border border-dark-500 rounded-lg px-3 py-2.5 text-sm text-ink transition-colors"
+                required />
             </div>
 
             <div>
               <label class="block text-xs font-display uppercase tracking-widest text-ink-muted mb-1.5">
                 Contraseña <span class="text-fuel">*</span>
               </label>
-              <input type="password" id="login-password" placeholder="••••••" class="fuel-input w-full bg-dark-700 border border-dark-500 rounded-lg px-3 py-2.5 text-sm text-ink transition-colors" required />
+              <input type="password" id="login-password" placeholder="••••••"
+                class="fuel-input w-full bg-dark-700 border border-dark-500 rounded-lg px-3 py-2.5 text-sm text-ink transition-colors"
+                required />
             </div>
 
-            <button type="submit" id="login-btn" class="w-full bg-fuel hover:bg-fuel/90 active:scale-[0.98] text-white font-display uppercase tracking-widest text-sm font-600 py-3 rounded-lg transition-all duration-150 disabled:opacity-50">
+            <button type="submit" id="login-btn"
+              class="w-full bg-fuel hover:bg-fuel/90 active:scale-[0.98] text-white font-display uppercase tracking-widest text-sm font-600 py-3 rounded-lg transition-all duration-150 disabled:opacity-50">
               <span id="login-text">Iniciar sesión</span>
             </button>
           </form>
@@ -148,179 +192,219 @@
          Se muestra cuando está autenticado
     ═════════════════════════════════════════ -->
     <div id="app-screen" class="hidden space-y-6">
-      <section>
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div class="card-accent bg-dark-800 border border-dark-600 rounded-xl p-5">
-            <p class="text-xs font-display uppercase tracking-widest text-ink-muted mb-3">Consumo medio</p>
-            <div class="flex items-end gap-2">
-              <span id="stat-avg-consumption" class="stat-value text-fuel">—</span>
-              <span class="text-ink-muted text-sm mb-1">L/100km</span>
-            </div>
-          </div>
-          <div class="card-accent bg-dark-800 border border-dark-600 rounded-xl p-5">
-            <p class="text-xs font-display uppercase tracking-widest text-ink-muted mb-3">Kilómetros totales</p>
-            <div class="flex items-end gap-2">
-              <span id="stat-total-km" class="stat-value">—</span>
-              <span class="text-ink-muted text-sm mb-1">km</span>
-            </div>
-          </div>
-          <div class="card-accent bg-dark-800 border border-dark-600 rounded-xl p-5">
-            <p class="text-xs font-display uppercase tracking-widest text-ink-muted mb-3">Litros totales</p>
-            <div class="flex items-end gap-2">
-              <span id="stat-total-liters" class="stat-value">—</span>
-              <span class="text-ink-muted text-sm mb-1">L</span>
-            </div>
-          </div>
-          <div class="card-accent bg-dark-800 border border-dark-600 rounded-xl p-5">
-            <p class="text-xs font-display uppercase tracking-widest text-ink-muted mb-3">Gasto total</p>
-            <div class="flex items-end gap-2">
-              <span id="stat-total-cost" class="stat-value">—</span>
-              <span class="text-ink-muted text-sm mb-1">€</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div class="bg-dark-800 border border-dark-600 rounded-xl p-6">
-          <h2 class="font-display text-lg font-600 uppercase tracking-wider text-ink mb-5 flex items-center gap-2">
-            <span class="w-1 h-5 bg-fuel rounded-full inline-block"></span>
-            Nuevo repostaje
-          </h2>
-
-          <form id="refuel-form" class="space-y-4">
-            <div>
-              <label class="block text-xs font-display uppercase tracking-widest text-ink-muted mb-1.5">Fecha</label>
-              <input type="date" id="refuel_date" name="refuel_date" class="fuel-input w-full bg-dark-700 border border-dark-500 rounded-lg px-3 py-2.5 text-sm text-ink font-mono transition-colors" />
-            </div>
-
-            <div>
-              <label class="block text-xs font-display uppercase tracking-widest text-ink-muted mb-1.5">
-                Kilómetros desde último repostaje <span class="text-fuel">*</span>
-              </label>
-              <div class="relative">
-                <input type="number" id="km_since_last" name="km_since_last" placeholder="0.0" step="0.1" min="0.1" class="fuel-input w-full bg-dark-700 border border-dark-500 rounded-lg px-3 py-2.5 pr-12 text-sm text-ink font-mono transition-colors" />
-                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink-faint font-mono">km</span>
+      <div id="dashboard-view">
+        <section>
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="card-accent bg-dark-800 border border-dark-600 rounded-xl p-5">
+              <p class="text-xs font-display uppercase tracking-widest text-ink-muted mb-3">Consumo medio</p>
+              <div class="flex items-end gap-2">
+                <span id="stat-avg-consumption" class="stat-value text-fuel">—</span>
+                <span class="text-ink-muted text-sm mb-1">L/100km</span>
               </div>
             </div>
-
-            <div>
-              <label class="block text-xs font-display uppercase tracking-widest text-ink-muted mb-1.5">
-                Litros llenados <span class="text-fuel">*</span>
-              </label>
-              <div class="relative">
-                <input type="number" id="liters_filled" name="liters_filled" placeholder="0.000" step="0.001" min="0.001" class="fuel-input w-full bg-dark-700 border border-dark-500 rounded-lg px-3 py-2.5 pr-8 text-sm text-ink font-mono transition-colors" />
-                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink-faint font-mono">L</span>
+            <div class="card-accent bg-dark-800 border border-dark-600 rounded-xl p-5">
+              <p class="text-xs font-display uppercase tracking-widest text-ink-muted mb-3">Kilómetros totales</p>
+              <div class="flex items-end gap-2">
+                <span id="stat-total-km" class="stat-value">—</span>
+                <span class="text-ink-muted text-sm mb-1">km</span>
               </div>
             </div>
-
-            <div>
-              <label class="block text-xs font-display uppercase tracking-widest text-ink-muted mb-1.5">
-                Precio por litro <span class="text-ink-faint">(opcional)</span>
-              </label>
-              <div class="relative">
-                <input type="number" id="price_per_liter" name="price_per_liter" placeholder="1.000" step="0.001" min="0" class="fuel-input w-full bg-dark-700 border border-dark-500 rounded-lg px-3 py-2.5 pr-8 text-sm text-ink font-mono transition-colors" />
-                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink-faint font-mono">€</span>
+            <div class="card-accent bg-dark-800 border border-dark-600 rounded-xl p-5">
+              <p class="text-xs font-display uppercase tracking-widest text-ink-muted mb-3">Litros totales</p>
+              <div class="flex items-end gap-2">
+                <span id="stat-total-liters" class="stat-value">—</span>
+                <span class="text-ink-muted text-sm mb-1">L</span>
               </div>
             </div>
+            <div class="card-accent bg-dark-800 border border-dark-600 rounded-xl p-5">
+              <p class="text-xs font-display uppercase tracking-widest text-ink-muted mb-3">Gasto total</p>
+              <div class="flex items-end gap-2">
+                <span id="stat-total-cost" class="stat-value">—</span>
+                <span class="text-ink-muted text-sm mb-1">€</span>
+              </div>
+            </div>
+          </div>
+        </section>
 
-            <div>
-              <label class="block text-xs font-display uppercase tracking-widest text-ink-muted mb-1.5">
-                Notas <span class="text-ink-faint">(opcional)</span>
-              </label>
-              <input type="text" id="notes" name="notes" placeholder="Gasolinera, tipo de combustible..." maxlength="200" class="fuel-input w-full bg-dark-700 border border-dark-500 rounded-lg px-3 py-2.5 text-sm text-ink transition-colors" />
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div class="bg-dark-800 border border-dark-600 rounded-xl p-6">
+            <h2 class="font-display text-lg font-600 uppercase tracking-wider text-ink mb-5 flex items-center gap-2">
+              <span class="w-1 h-5 bg-fuel rounded-full inline-block"></span>
+              Nuevo repostaje
+            </h2>
+
+            <form id="refuel-form" class="space-y-4">
+              <div>
+                <label class="block text-xs font-display uppercase tracking-widest text-ink-muted mb-1.5">Fecha</label>
+                <input type="date" id="refuel_date" name="refuel_date"
+                  class="fuel-input w-full bg-dark-700 border border-dark-500 rounded-lg px-3 py-2.5 text-sm text-ink font-mono transition-colors" />
+              </div>
+
+              <div>
+                <label class="block text-xs font-display uppercase tracking-widest text-ink-muted mb-1.5">
+                  Kilómetros desde último repostaje <span class="text-fuel">*</span>
+                </label>
+                <div class="relative">
+                  <input type="number" id="km_since_last" name="km_since_last" placeholder="0.0" step="0.1" min="0.1"
+                    class="fuel-input w-full bg-dark-700 border border-dark-500 rounded-lg px-3 py-2.5 pr-12 text-sm text-ink font-mono transition-colors" />
+                  <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink-faint font-mono">km</span>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-display uppercase tracking-widest text-ink-muted mb-1.5">
+                  Litros llenados <span class="text-fuel">*</span>
+                </label>
+                <div class="relative">
+                  <input type="number" id="liters_filled" name="liters_filled" placeholder="0.000" step="0.001"
+                    min="0.001"
+                    class="fuel-input w-full bg-dark-700 border border-dark-500 rounded-lg px-3 py-2.5 pr-8 text-sm text-ink font-mono transition-colors" />
+                  <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink-faint font-mono">L</span>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-display uppercase tracking-widest text-ink-muted mb-1.5">
+                  Precio por litro <span class="text-ink-faint">(opcional)</span>
+                </label>
+                <div class="relative">
+                  <input type="number" id="price_per_liter" name="price_per_liter" placeholder="1.000" step="0.001"
+                    min="0"
+                    class="fuel-input w-full bg-dark-700 border border-dark-500 rounded-lg px-3 py-2.5 pr-8 text-sm text-ink font-mono transition-colors" />
+                  <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink-faint font-mono">€</span>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-display uppercase tracking-widest text-ink-muted mb-1.5">
+                  Notas <span class="text-ink-faint">(opcional)</span>
+                </label>
+                <input type="text" id="notes" name="notes" placeholder="Gasolinera, tipo de combustible..."
+                  maxlength="200"
+                  class="fuel-input w-full bg-dark-700 border border-dark-500 rounded-lg px-3 py-2.5 text-sm text-ink transition-colors" />
+              </div>
+
+              <div id="consumption-preview" class="rounded-lg border border-dark-500 bg-dark-700/50 px-4 py-3 hidden">
+                <p class="text-xs text-ink-muted font-display uppercase tracking-wider mb-1">Consumo estimado</p>
+                <p class="font-mono text-fuel text-2xl font-500" id="preview-value">—</p>
+                <p class="text-xs text-ink-faint mt-0.5">L/100km</p>
+              </div>
+
+              <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <button type="submit" id="submit-btn"
+                  class="w-full sm:w-auto bg-fuel hover:bg-fuel/90 active:scale-[0.98] text-white font-display uppercase tracking-widest text-sm font-600 py-3 px-6 rounded-lg transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed">
+                  <span id="submit-text">Registrar repostaje</span>
+                </button>
+                <button type="button" id="cancel-edit-btn"
+                  class="hidden w-full sm:w-auto border border-dark-600 text-ink-muted bg-dark-700 hover:bg-dark-600 rounded-lg px-5 py-3 transition-colors">
+                  Cancelar edición
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div class="lg:col-span-2 bg-dark-800 border border-dark-600 rounded-xl p-6 flex flex-col">
+            <div class="flex items-center justify-between mb-6">
+              <h2 class="font-display text-lg font-600 uppercase tracking-wider text-ink flex items-center gap-2">
+                <span class="w-1 h-5 bg-fuel rounded-full inline-block"></span>
+                Evolución del consumo
+              </h2>
+              <span class="text-xs font-mono text-ink-faint">L/100km</span>
             </div>
 
-            <div id="consumption-preview" class="rounded-lg border border-dark-500 bg-dark-700/50 px-4 py-3 hidden">
-              <p class="text-xs text-ink-muted font-display uppercase tracking-wider mb-1">Consumo estimado</p>
-              <p class="font-mono text-fuel text-2xl font-500" id="preview-value">—</p>
-              <p class="text-xs text-ink-faint mt-0.5">L/100km</p>
+            <div id="chart-empty" class="flex-1 flex flex-col items-center justify-center text-ink-faint gap-2">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+              </svg>
+              <p class="text-sm">Sin datos todavía</p>
+              <p class="text-xs">Añade tu primer repostaje</p>
             </div>
 
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <button type="submit" id="submit-btn" class="w-full sm:w-auto bg-fuel hover:bg-fuel/90 active:scale-[0.98] text-white font-display uppercase tracking-widest text-sm font-600 py-3 px-6 rounded-lg transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed">
-                <span id="submit-text">Registrar repostaje</span>
-              </button>
-              <button type="button" id="cancel-edit-btn" class="hidden w-full sm:w-auto border border-dark-600 text-ink-muted bg-dark-700 hover:bg-dark-600 rounded-lg px-5 py-3 transition-colors">
-                Cancelar edición
-              </button>
+            <div id="chart-container" class="flex-1 hidden" style="min-height: 220px; position: relative;">
+              <canvas id="consumption-chart" role="img"
+                aria-label="Gráfica de línea con la evolución del consumo de combustible en L/100km a lo largo del tiempo"></canvas>
             </div>
-          </form>
-        </div>
+          </div>
+        </section>
 
-        <div class="lg:col-span-2 bg-dark-800 border border-dark-600 rounded-xl p-6 flex flex-col">
-          <div class="flex items-center justify-between mb-6">
+        <section class="bg-dark-800 border border-dark-600 rounded-xl overflow-hidden">
+          <div class="px-6 py-4 border-b border-dark-600 flex items-center justify-between">
             <h2 class="font-display text-lg font-600 uppercase tracking-wider text-ink flex items-center gap-2">
               <span class="w-1 h-5 bg-fuel rounded-full inline-block"></span>
-              Evolución del consumo
+              Histórico de repostajes
             </h2>
-            <span class="text-xs font-mono text-ink-faint">L/100km</span>
+            <span id="table-count" class="text-xs font-mono text-ink-faint">0 registros</span>
           </div>
 
-          <div id="chart-empty" class="flex-1 flex flex-col items-center justify-center text-ink-faint gap-2">
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-            </svg>
-            <p class="text-sm">Sin datos todavía</p>
-            <p class="text-xs">Añade tu primer repostaje</p>
+          <div class="px-6 py-4 border-b border-dark-600">
+            <input type="text" id="search-notes-input" placeholder="Buscar en notas..."
+              class="w-full bg-dark-700 border border-dark-500 rounded-lg px-3 py-2.5 text-sm text-ink placeholder-ink-faint transition-colors focus:outline-none focus:border-fuel" />
           </div>
 
-          <div id="chart-container" class="flex-1 hidden" style="min-height: 220px; position: relative;">
-            <canvas id="consumption-chart" role="img" aria-label="Gráfica de línea con la evolución del consumo de combustible en L/100km a lo largo del tiempo"></canvas>
+          <div id="table-loading" class="py-16 flex flex-col items-center gap-3 text-ink-muted">
+            <div class="chart-loader">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2">
+                <path d="M3 22V8l7-6 7 6v14" />
+                <path d="M10 22V13h4v9" />
+              </svg>
+            </div>
+            <p class="text-sm">Cargando datos...</p>
+          </div>
+
+          <div id="table-empty" class="py-16 flex flex-col items-center gap-2 text-ink-faint hidden">
+            <p class="text-sm">No hay repostajes registrados.</p>
+            <p class="text-xs">Usa el formulario de la izquierda para añadir el primero.</p>
+          </div>
+
+          <div id="table-wrapper" class="hidden overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-dark-600 text-ink-faint">
+                  <th
+                    class="text-left px-6 py-3 font-display text-xs uppercase tracking-widest font-400 cursor-pointer hover:text-ink transition-colors"
+                    onclick="sortRefuels('refuel_date')">Fecha <span class="ml-2 text-xs"
+                      data-sort-field="refuel_date"></span></th>
+                  <th
+                    class="text-right px-4 py-3 font-display text-xs uppercase tracking-widest font-400 cursor-pointer hover:text-ink transition-colors"
+                    onclick="sortRefuels('km_since_last')">Km recorridos <span class="ml-2 text-xs"
+                      data-sort-field="km_since_last"></span></th>
+                  <th
+                    class="text-right px-4 py-3 font-display text-xs uppercase tracking-widest font-400 cursor-pointer hover:text-ink transition-colors"
+                    onclick="sortRefuels('liters_filled')">Litros <span class="ml-2 text-xs"
+                      data-sort-field="liters_filled"></span></th>
+                  <th
+                    class="text-right px-4 py-3 font-display text-xs uppercase tracking-widest font-400 cursor-pointer hover:text-ink transition-colors"
+                    onclick="sortRefuels('price_per_liter')">€/L <span class="ml-2 text-xs"
+                      data-sort-field="price_per_liter"></span></th>
+                  <th
+                    class="text-right px-4 py-3 font-display text-xs uppercase tracking-widest font-400 cursor-pointer hover:text-ink transition-colors"
+                    onclick="calculateAndSortByTotalCost()">Total € <span class="ml-2 text-xs"
+                      data-sort-field="total_cost"></span></th>
+                  <th
+                    class="text-center px-4 py-3 font-display text-xs uppercase tracking-widest font-400 cursor-pointer hover:text-ink transition-colors"
+                    onclick="sortRefuels('avg_consumption')">Consumo <span class="ml-2 text-xs"
+                      data-sort-field="avg_consumption"></span></th>
+                  <th class="text-left px-6 py-3 font-display text-xs uppercase tracking-widest font-400">Notas</th>
+                  <th class="text-center px-4 py-3 font-display text-xs uppercase tracking-widest font-400">Acciones
+                  </th>
+                </tr>
+              </thead>
+              <tbody id="refuels-tbody"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <div id="profile-view" class="hidden">
+        <div class="grid gap-4 lg:grid-cols-2">
+          <div class="rounded-xl border border-dark-600 bg-dark-800 p-6">
+            <h3 class="font-display text-lg font-600 uppercase tracking-wider text-ink">Perfil</h3>
+          </div>
+          <div class="rounded-xl border border-dark-600 bg-dark-800 p-6">
+            <h3 class="font-display text-lg font-600 uppercase tracking-wider text-ink">Acceso rápido</h3>
           </div>
         </div>
-      </section>
-
-      <section class="bg-dark-800 border border-dark-600 rounded-xl overflow-hidden">
-        <div class="px-6 py-4 border-b border-dark-600 flex items-center justify-between">
-          <h2 class="font-display text-lg font-600 uppercase tracking-wider text-ink flex items-center gap-2">
-            <span class="w-1 h-5 bg-fuel rounded-full inline-block"></span>
-            Histórico de repostajes
-          </h2>
-          <span id="table-count" class="text-xs font-mono text-ink-faint">0 registros</span>
-        </div>
-
-        <div class="px-6 py-4 border-b border-dark-600">
-          <input 
-            type="text" 
-            id="search-notes-input" 
-            placeholder="Buscar en notas..." 
-            class="w-full bg-dark-700 border border-dark-500 rounded-lg px-3 py-2.5 text-sm text-ink placeholder-ink-faint transition-colors focus:outline-none focus:border-fuel"
-          />
-        </div>
-
-        <div id="table-loading" class="py-16 flex flex-col items-center gap-3 text-ink-muted">
-          <div class="chart-loader">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2">
-              <path d="M3 22V8l7-6 7 6v14"/><path d="M10 22V13h4v9"/>
-            </svg>
-          </div>
-          <p class="text-sm">Cargando datos...</p>
-        </div>
-
-        <div id="table-empty" class="py-16 flex flex-col items-center gap-2 text-ink-faint hidden">
-          <p class="text-sm">No hay repostajes registrados.</p>
-          <p class="text-xs">Usa el formulario de la izquierda para añadir el primero.</p>
-        </div>
-
-        <div id="table-wrapper" class="hidden overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="border-b border-dark-600 text-ink-faint">
-                <th class="text-left px-6 py-3 font-display text-xs uppercase tracking-widest font-400 cursor-pointer hover:text-ink transition-colors" onclick="sortRefuels('refuel_date')">Fecha <span class="ml-2 text-xs" data-sort-field="refuel_date"></span></th>
-                <th class="text-right px-4 py-3 font-display text-xs uppercase tracking-widest font-400 cursor-pointer hover:text-ink transition-colors" onclick="sortRefuels('km_since_last')">Km recorridos <span class="ml-2 text-xs" data-sort-field="km_since_last"></span></th>
-                <th class="text-right px-4 py-3 font-display text-xs uppercase tracking-widest font-400 cursor-pointer hover:text-ink transition-colors" onclick="sortRefuels('liters_filled')">Litros <span class="ml-2 text-xs" data-sort-field="liters_filled"></span></th>
-                <th class="text-right px-4 py-3 font-display text-xs uppercase tracking-widest font-400 cursor-pointer hover:text-ink transition-colors" onclick="sortRefuels('price_per_liter')">€/L <span class="ml-2 text-xs" data-sort-field="price_per_liter"></span></th>
-                <th class="text-right px-4 py-3 font-display text-xs uppercase tracking-widest font-400 cursor-pointer hover:text-ink transition-colors" onclick="calculateAndSortByTotalCost()">Total € <span class="ml-2 text-xs" data-sort-field="total_cost"></span></th>
-                <th class="text-center px-4 py-3 font-display text-xs uppercase tracking-widest font-400 cursor-pointer hover:text-ink transition-colors" onclick="sortRefuels('avg_consumption')">Consumo <span class="ml-2 text-xs" data-sort-field="avg_consumption"></span></th>
-                <th class="text-left px-6 py-3 font-display text-xs uppercase tracking-widest font-400">Notas</th>
-                <th class="text-center px-4 py-3 font-display text-xs uppercase tracking-widest font-400">Acciones</th>
-              </tr>
-            </thead>
-            <tbody id="refuels-tbody"></tbody>
-          </table>
-        </div>
-      </section>
+      </div>
     </div>
   </main>
 
@@ -331,36 +415,49 @@
           <h3 class="font-display text-lg font-600 uppercase tracking-wider text-ink">Registrar vehículo</h3>
           <p class="text-xs text-ink-faint mt-1">Añade un coche para empezar a registrar repostajes por vehículo.</p>
         </div>
-        <button id="close-car-modal-btn" class="text-ink-faint hover:text-ink transition-colors" aria-label="Cerrar modal">✕</button>
+        <button id="close-car-modal-btn" class="text-ink-faint hover:text-ink transition-colors"
+          aria-label="Cerrar modal">✕</button>
       </div>
 
       <form id="car-modal-form" class="space-y-4">
         <div>
-          <label class="block text-xs font-display uppercase tracking-widest text-ink-muted mb-1.5">Marca <span class="text-fuel">*</span></label>
-          <input type="text" id="car_brand" name="brand" placeholder="Toyota" class="fuel-input w-full bg-dark-700 border border-dark-500 rounded-lg px-3 py-2.5 text-sm text-ink transition-colors" required />
+          <label class="block text-xs font-display uppercase tracking-widest text-ink-muted mb-1.5">Marca <span
+              class="text-fuel">*</span></label>
+          <input type="text" id="car_brand" name="brand" placeholder="Toyota"
+            class="fuel-input w-full bg-dark-700 border border-dark-500 rounded-lg px-3 py-2.5 text-sm text-ink transition-colors"
+            required />
         </div>
 
         <div>
-          <label class="block text-xs font-display uppercase tracking-widest text-ink-muted mb-1.5">Modelo <span class="text-fuel">*</span></label>
-          <input type="text" id="car_model" name="model" placeholder="Corolla" class="fuel-input w-full bg-dark-700 border border-dark-500 rounded-lg px-3 py-2.5 text-sm text-ink transition-colors" required />
+          <label class="block text-xs font-display uppercase tracking-widest text-ink-muted mb-1.5">Modelo <span
+              class="text-fuel">*</span></label>
+          <input type="text" id="car_model" name="model" placeholder="Corolla"
+            class="fuel-input w-full bg-dark-700 border border-dark-500 rounded-lg px-3 py-2.5 text-sm text-ink transition-colors"
+            required />
         </div>
 
         <div>
-          <label class="block text-xs font-display uppercase tracking-widest text-ink-muted mb-1.5">Año <span class="text-fuel">*</span></label>
-          <input type="number" id="car_year" name="year" placeholder="2024" min="1900" max="2100" class="fuel-input w-full bg-dark-700 border border-dark-500 rounded-lg px-3 py-2.5 text-sm text-ink font-mono transition-colors" required />
+          <label class="block text-xs font-display uppercase tracking-widest text-ink-muted mb-1.5">Año <span
+              class="text-fuel">*</span></label>
+          <input type="number" id="car_year" name="year" placeholder="2024" min="1900" max="2100"
+            class="fuel-input w-full bg-dark-700 border border-dark-500 rounded-lg px-3 py-2.5 text-sm text-ink font-mono transition-colors"
+            required />
         </div>
 
-        <button type="submit" id="car-modal-submit-btn" class="w-full bg-fuel hover:bg-fuel/90 active:scale-[0.98] text-white font-display uppercase tracking-widest text-sm font-600 py-3 rounded-lg transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed">
+        <button type="submit" id="car-modal-submit-btn"
+          class="w-full bg-fuel hover:bg-fuel/90 active:scale-[0.98] text-white font-display uppercase tracking-widest text-sm font-600 py-3 rounded-lg transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed">
           Registrar vehículo
         </button>
       </form>
     </div>
   </div>
 
-  <div id="toast" class="fixed bottom-6 right-6 z-50 rounded-xl border px-5 py-4 text-sm max-w-xs shadow-2xl" role="alert" aria-live="polite">
+  <div id="toast" class="fixed bottom-6 right-6 z-50 rounded-xl border px-5 py-4 text-sm max-w-xs shadow-2xl"
+    role="alert" aria-live="polite">
     <p id="toast-message" class="font-500"></p>
   </div>
 
   <script src="script.js" defer></script>
 </body>
+
 </html>

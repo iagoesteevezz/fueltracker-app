@@ -38,6 +38,14 @@ const dom = {
   openCarModalBtn: document.getElementById('open-car-modal-btn'),
   carModal: document.getElementById('car-modal'),
   closeCarModalBtn: document.getElementById('close-car-modal-btn'),
+  brandHomeBtn: document.getElementById('brand-home-btn'),
+  dashboardView: document.getElementById('dashboard-view'),
+  profileView: document.getElementById('profile-view'),
+  userAvatarBtn: document.getElementById('user-avatar-btn'),
+  userAvatarLabel: document.getElementById('user-avatar-label'),
+  userDropdown: document.getElementById('user-dropdown'),
+  userLogoutBtn: document.getElementById('user-logout-btn'),
+  userProfileLink: document.getElementById('user-profile-link'),
   kmInput: document.getElementById('km_since_last'),
   litersInput: document.getElementById('liters_filled'),
   priceInput: document.getElementById('price_per_liter'),
@@ -92,13 +100,20 @@ function setupFormListeners() {
   dom.activeCarSelect.addEventListener('change', handleActiveCarChange);
   dom.openCarModalBtn.addEventListener('click', openCarModal);
   dom.closeCarModalBtn.addEventListener('click', closeCarModal);
+  dom.brandHomeBtn.addEventListener('click', showDashboardView);
+  dom.userProfileLink.addEventListener('click', (event) => {
+    event.preventDefault();
+    showProfileView();
+  });
+  dom.userAvatarBtn.addEventListener('click', handleAvatarClick);
+  dom.userLogoutBtn.addEventListener('click', handleLogout);
   dom.carModal.addEventListener('click', (event) => {
     if (event.target === dom.carModal) closeCarModal();
   });
   dom.tbody.addEventListener('click', handleTableAction);
-  dom.logoutBtn.addEventListener('click', handleLogout);
   dom.cancelEditBtn.addEventListener('click', resetForm);
   dom.searchNotesInput.addEventListener('input', filterAndRenderTable);
+  document.addEventListener('click', handleOutsideClick);
 }
 
 async function handleRegister(e) {
@@ -129,6 +144,7 @@ async function handleRegister(e) {
 
     token = json.data.token;
     localStorage.setItem('token', token);
+    persistUserIdentity(username, email);
     showToast('Cuenta creada correctamente', 'success');
     setTimeout(async () => {
       showAppScreen();
@@ -172,6 +188,7 @@ async function handleLogin(e) {
 
     token = json.data.token;
     localStorage.setItem('token', token);
+    persistUserIdentity('', email);
     showToast('Sesión iniciada correctamente', 'success');
     setTimeout(async () => {
       showAppScreen();
@@ -190,7 +207,10 @@ async function handleLogin(e) {
 
 function handleLogout() {
   localStorage.removeItem('token');
+  localStorage.removeItem('userName');
+  localStorage.removeItem('userEmail');
   token = null;
+  closeUserDropdown();
   dom.registerForm.reset();
   dom.loginForm.reset();
   showAuthScreen();
@@ -201,13 +221,28 @@ function handleLogout() {
 function showAuthScreen() {
   dom.authScreen.classList.remove('hidden');
   dom.appScreen.classList.add('hidden');
-  dom.logoutBtn.classList.add('hidden');
+  closeUserDropdown();
 }
+
+const showDashboardView = () => {
+  if (!dom.dashboardView || !dom.profileView) return;
+  dom.dashboardView.classList.remove('hidden');
+  dom.profileView.classList.add('hidden');
+  closeUserDropdown();
+};
+
+const showProfileView = () => {
+  if (!dom.dashboardView || !dom.profileView) return;
+  dom.dashboardView.classList.add('hidden');
+  dom.profileView.classList.remove('hidden');
+  closeUserDropdown();
+};
 
 function showAppScreen() {
   dom.authScreen.classList.add('hidden');
   dom.appScreen.classList.remove('hidden');
-  dom.logoutBtn.classList.remove('hidden');
+  updateUserAvatar();
+  showDashboardView();
 }
 
 function getHeaders() {
@@ -216,6 +251,93 @@ function getHeaders() {
     Authorization: `Bearer ${token}`,
   };
 }
+
+const persistUserIdentity = (username, email) => {
+  const safeUsername = username?.trim();
+  const safeEmail = email?.trim();
+
+  if (safeUsername) {
+    localStorage.setItem('userName', safeUsername);
+  }
+
+  if (safeEmail) {
+    localStorage.setItem('userEmail', safeEmail);
+  }
+
+  if (!safeUsername && safeEmail) {
+    localStorage.setItem('userName', safeEmail.split('@')[0]);
+  }
+};
+
+const getStoredUserDisplay = () => {
+  const savedName = localStorage.getItem('userName');
+  const savedEmail = localStorage.getItem('userEmail');
+
+  if (savedName && savedName.trim()) {
+    return savedName.trim();
+  }
+
+  if (savedEmail && savedEmail.trim()) {
+    return savedEmail.trim();
+  }
+
+  return '';
+};
+
+const getUserInitials = () => {
+  const displayName = getStoredUserDisplay();
+
+  if (!displayName) {
+    return 'U';
+  }
+
+  const parts = displayName.split(/\s+/).filter(Boolean);
+
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+
+  return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+};
+
+const updateUserAvatar = () => {
+  if (!dom.userAvatarLabel) return;
+  dom.userAvatarLabel.textContent = getUserInitials();
+};
+
+const closeUserDropdown = () => {
+  if (!dom.userDropdown || !dom.userAvatarBtn) return;
+  dom.userDropdown.classList.add('hidden');
+  dom.userAvatarBtn.setAttribute('aria-expanded', 'false');
+};
+
+const toggleUserDropdown = () => {
+  if (!dom.userDropdown || !dom.userAvatarBtn) return;
+  const isHidden = dom.userDropdown.classList.contains('hidden');
+
+  if (isHidden) {
+    dom.userDropdown.classList.remove('hidden');
+    dom.userAvatarBtn.setAttribute('aria-expanded', 'true');
+    return;
+  }
+
+  closeUserDropdown();
+};
+
+const handleAvatarClick = (event) => {
+  event.stopPropagation();
+  toggleUserDropdown();
+};
+
+const handleOutsideClick = (event) => {
+  if (!dom.userDropdown || !dom.userAvatarBtn) return;
+
+  if (dom.userAvatarBtn.contains(event.target) || dom.userDropdown.contains(event.target)) {
+    return;
+  }
+
+  closeUserDropdown();
+};
 
 async function loadRefuels() {
   try {
@@ -235,9 +357,8 @@ async function loadRefuels() {
 
     const json = await res.json();
     allRefuels = json.data;
-    refuels = [...allRefuels];  // Inicializar refuels sin filtro
     setApiStatus(true);
-    renderAll(refuels);
+    filterAndRenderTable();
   } catch (error) {
     console.error('[loadRefuels]', error);
     setApiStatus(false);
@@ -264,13 +385,22 @@ async function loadCars() {
     const json = await res.json();
     cars = json.data;
     populateActiveCarSelect(cars);
-    if (!activeCarId && cars.length > 0) {
-      setActiveCarId(cars[0].id, { shouldRender: false });
+    if (cars.length > 0) {
+      const nextCarId = activeCarId ?? cars[0].id;
+      setActiveCarId(nextCarId, { shouldRender: true });
+    } else {
+      activeCarId = null;
+      if (dom.activeCarSelect) {
+        dom.activeCarSelect.value = '';
+      }
+      renderAll([]);
     }
   } catch (error) {
     console.error('[loadCars]', error);
     cars = [];
     populateActiveCarSelect(cars);
+    activeCarId = null;
+    renderAll([]);
   }
 }
 
@@ -566,31 +696,31 @@ function updateSortIndicators() {
   });
 }
 
-// ── Filtrar repostajes por notas y renderizar tabla ──────────────────────
+// ── Filtrar repostajes por coche activo, notas y renderizar dashboard ──
 function filterAndRenderTable() {
   const searchTerm = dom.searchNotesInput.value.toLowerCase().trim();
-  
-  // Filtrar allRefuels según el término de búsqueda en la columna 'notes'
-  if (searchTerm === '') {
-    // Si el input está vacío, mostrar todos los datos
-    refuels = [...allRefuels];
+
+  let filtered = [...allRefuels];
+
+  if (activeCarId) {
+    filtered = filtered.filter((r) => Number(r.car_id) === Number(activeCarId));
   } else {
-    refuels = allRefuels.filter((r) => {
+    filtered = [];
+  }
+
+  if (searchTerm !== '') {
+    filtered = filtered.filter((r) => {
       const notes = (r.notes || '').toLowerCase();
       return notes.includes(searchTerm);
     });
   }
-  
-  // Mantener el ordenamiento actual si existe
+
   if (currentSortField) {
-    refuels = sortArray(refuels, currentSortField, currentSortOrder);
+    filtered = sortArray(filtered, currentSortField, currentSortOrder);
   }
-  
-  // Renderizar tabla con datos filtrados
-  renderTable(refuels);
-  // Actualizar estadísticas con datos filtrados
-  renderStats(refuels);
-  updateSortIndicators();
+
+  refuels = filtered;
+  renderAll(refuels);
 }
 
 // ── Función auxiliar para ordenar un array ───────────────────────────────
@@ -696,14 +826,12 @@ function enterEditMode(id) {
   }
 
   editModeId = id;
+  setActiveCarId(item.car_id, { shouldRender: false });
   dom.dateInput.value = item.refuel_date;
   dom.kmInput.value = item.km_since_last;
   dom.litersInput.value = item.liters_filled;
   dom.priceInput.value = item.price_per_liter || '';
   dom.notesInput.value = item.notes || '';
-  if (dom.carSelect) {
-    dom.carSelect.value = item.car_id || '';
-  }
   dom.submitText.textContent = 'Actualizar repostaje';
   dom.cancelEditBtn.classList.remove('hidden');
   updateConsumptionPreview();
@@ -812,9 +940,6 @@ function resetForm() {
   editModeId = null;
   dom.form.reset();
   setTodayAsDefault();
-  if (dom.carSelect) {
-    dom.carSelect.value = '';
-  }
   dom.preview.classList.add('hidden');
   dom.submitText.textContent = 'Registrar repostaje';
   dom.cancelEditBtn.classList.add('hidden');
@@ -867,3 +992,16 @@ function showToast(message, type = 'success') {
   dom.toast.classList.add('visible');
   toastTimeout = setTimeout(() => dom.toast.classList.remove('visible'), 3500);
 }
+
+const openCarModal = () => {
+  if (!dom.carModal) return;
+  dom.carModal.classList.remove('hidden');
+  dom.carModal.setAttribute('aria-hidden', 'false');
+};
+
+const closeCarModal = () => {
+  if (!dom.carModal) return;
+  dom.carModal.classList.add('hidden');
+  dom.carModal.setAttribute('aria-hidden', 'true');
+  dom.carModalForm.reset();
+};
