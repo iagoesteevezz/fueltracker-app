@@ -1054,7 +1054,7 @@ function renderTable(data) {
     const delay = Math.min(i * 50, 500);
 
     return `
-      <tr class="row-animate border-b border-dark-700 hover:bg-dark-700/40 transition-colors" style="animation-delay: ${delay}ms; opacity: 0;">
+      <tr class="table-row-fade border-b border-dark-700 hover:bg-dark-700/40 transition-colors" data-animation-delay="${delay}">
         <td class="px-6 py-4 font-mono text-sm text-ink">${formatDate(r.refuel_date)}</td>
         <td class="px-4 py-4 font-mono text-sm text-right text-ink">${Number.parseFloat(r.km_since_last).toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}<span class="text-ink-faint text-xs ml-1">km</span></td>
         <td class="px-4 py-4 font-mono text-sm text-right text-ink">${Number.parseFloat(r.liters_filled).toFixed(3)}<span class="text-ink-faint text-xs ml-1">L</span></td>
@@ -1073,6 +1073,11 @@ function renderTable(data) {
       </tr>
     `;
   }).join('');
+
+  dom.tbody.querySelectorAll('tr.table-row-fade').forEach((row) => {
+    const delayValue = row.dataset.animationDelay || '0';
+    row.style.setProperty('--animation-delay', `${delayValue}ms`);
+  });
 }
 
 // ── Actualizar indicadores visuales de orden en las cabeceras ───────────
@@ -1636,7 +1641,7 @@ async function initStationsMap() {
 
     const userIcon = L.divIcon({
       className: 'custom-user-icon',
-      html: '<div class="w-5 h-5 bg-[#f97316] rounded-full border-2 border-white shadow-[0_0_15px_rgba(249,115,22,0.8)] animate-pulse"></div>',
+      html: '<div class="custom-user-marker"></div>',
       iconSize: [20, 20],
       iconAnchor: [10, 10]
     });

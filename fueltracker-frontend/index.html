@@ -208,9 +208,9 @@
          Se muestra cuando está autenticado
     ═════════════════════════════════════════ -->
     <div id="app-screen" class="hidden space-y-6">
-      <div id="dashboard-view">
+      <div id="dashboard-view" class="flex flex-col gap-6">
         <section>
-          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div class="card-accent bg-dark-800 border border-dark-600 rounded-xl p-5">
               <p class="text-xs font-display uppercase tracking-widest text-ink-muted mb-3">Consumo medio</p>
               <div class="flex items-end gap-2">
@@ -242,7 +242,7 @@
           </div>
         </section>
 
-        <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div class="bg-dark-800 border border-dark-600 rounded-xl p-6">
             <h2 class="font-display text-lg font-600 uppercase tracking-wider text-ink mb-5 flex items-center gap-2">
               <span class="w-1 h-5 bg-fuel rounded-full inline-block"></span>
@@ -336,7 +336,7 @@
               <p class="text-xs">Añade tu primer repostaje</p>
             </div>
 
-            <div id="chart-container" class="flex-1 hidden" style="min-height: 220px; position: relative;">
+            <div id="chart-container" class="flex-1 hidden chart-wrapper">
               <canvas id="consumption-chart" role="img"
                 aria-label="Gráfica de línea con la evolución del consumo de combustible en L/100km a lo largo del tiempo"></canvas>
             </div>
@@ -417,11 +417,7 @@
 
           <div class="flex items-center gap-3 bg-dark-800/80 p-2 px-4 rounded-xl border border-dark-600">
             <label id="radius-label" class="text-sm text-slate-300 font-medium whitespace-nowrap min-w-[100px]">Radio: 50 km</label>
-            <input type="range" id="radius-slider" min="1" max="100" value="50" 
-            class="w-32 h-1.5 bg-dark-600 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none 
-            [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-[#f97316] 
-            [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-md [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 
-            [&::-moz-range-thumb]:bg-[#f97316] [&::-moz-range-thumb]:border-none [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:shadow-md">
+            <input type="range" id="radius-slider" class="radius-slider" min="1" max="100" value="50">
           </div>
         </div>
 
