@@ -458,17 +458,21 @@
         <div>
           <label class="block text-xs font-display uppercase tracking-widest text-ink-muted mb-1.5">Marca <span
               class="text-fuel">*</span></label>
-          <input type="text" id="car_brand" name="brand" placeholder="Toyota"
+          <select id="car_brand" name="brand" title="Selecciona una marca"
             class="fuel-input w-full bg-dark-700 border border-dark-500 rounded-lg px-3 py-2.5 text-sm text-ink transition-colors"
-            required />
+            required>
+            <option value="">Selecciona una marca...</option>
+          </select>
         </div>
 
         <div>
           <label class="block text-xs font-display uppercase tracking-widest text-ink-muted mb-1.5">Modelo <span
               class="text-fuel">*</span></label>
-          <input type="text" id="car_model" name="model" placeholder="Corolla"
+          <select id="car_model" name="model" title="Selecciona un modelo" disabled
             class="fuel-input w-full bg-dark-700 border border-dark-500 rounded-lg px-3 py-2.5 text-sm text-ink transition-colors"
-            required />
+            required>
+            <option value="">Selecciona una marca primero...</option>
+          </select>
         </div>
 
         <div>

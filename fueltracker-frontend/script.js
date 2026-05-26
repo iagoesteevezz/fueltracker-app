@@ -109,6 +109,7 @@ function setupFormListeners() {
   dom.litersInput.addEventListener('input', updateConsumptionPreview);
   dom.form.addEventListener('submit', handleSubmit);
   dom.carModalForm.addEventListener('submit', handleCarSubmit);
+  dom.carBrandInput.addEventListener('change', handleCarBrandChange);
   dom.activeCarSelect.addEventListener('change', handleActiveCarChange);
   dom.openCarModalBtn.addEventListener('click', openCarModal);
   dom.closeCarModalBtn.addEventListener('click', closeCarModal);
@@ -505,6 +506,70 @@ function handleActiveCarChange(event) {
   const selected = event.target.value;
   setActiveCarId(selected);
 }
+
+const fetchCarBrands = async () => {
+  try {
+    const res = await fetch('https://vpic.nhtsa.dot.gov/api/vehicles/GetMakesForVehicleType/car?format=json');
+
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+
+    const json = await res.json();
+    const brands = (json.Results || [])
+      .map((item) => item.MakeName)
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+
+    dom.carBrandInput.innerHTML = '<option value="">Selecciona una marca...</option>' + brands.map((brand) => `<option value="${brand}">${brand}</option>`).join('');
+    dom.carBrandInput.disabled = false;
+
+    dom.carModelInput.innerHTML = '<option value="">Selecciona una marca primero...</option>';
+    dom.carModelInput.disabled = true;
+  } catch (error) {
+    console.error('[fetchCarBrands]', error);
+    dom.carBrandInput.innerHTML = '<option value="">No se pudieron cargar las marcas</option>';
+    dom.carBrandInput.disabled = true;
+  }
+};
+
+const fetchCarModels = async (brand) => {
+  dom.carModelInput.disabled = true;
+  dom.carModelInput.innerHTML = '<option value="">Cargando modelos...</option>';
+
+  try {
+    const res = await fetch(`https://vpic.nhtsa.dot.gov/api/vehicles/GetModelsForMake/${encodeURIComponent(brand)}?format=json`);
+
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+
+    const json = await res.json();
+    const models = (json.Results || [])
+      .map((item) => item.Model_Name)
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+
+    dom.carModelInput.innerHTML = '<option value="">Selecciona un modelo...</option>' + models.map((model) => `<option value="${model}">${model}</option>`).join('');
+    dom.carModelInput.disabled = false;
+  } catch (error) {
+    console.error('[fetchCarModels]', error);
+    dom.carModelInput.innerHTML = '<option value="">No se pudieron cargar los modelos</option>';
+    dom.carModelInput.disabled = true;
+  }
+};
+
+const handleCarBrandChange = async (event) => {
+  const selectedBrand = event.target.value.trim();
+
+  if (!selectedBrand) {
+    dom.carModelInput.innerHTML = '<option value="">Selecciona una marca primero...</option>';
+    dom.carModelInput.disabled = true;
+    return;
+  }
+
+  await fetchCarModels(selectedBrand);
+};
 
 async function createCar(data) {
   const res = await fetch(`${API_BASE}/cars`, {
@@ -1237,6 +1302,13 @@ const openCarModal = () => {
   if (!dom.carModal) return;
   dom.carModal.classList.remove('hidden');
   dom.carModal.setAttribute('aria-hidden', 'false');
+
+  dom.carBrandInput.innerHTML = '<option value="">Cargando marcas...</option>';
+  dom.carBrandInput.disabled = true;
+  dom.carModelInput.innerHTML = '<option value="">Selecciona una marca primero...</option>';
+  dom.carModelInput.disabled = true;
+
+  fetchCarBrands();
 };
 
 const closeCarModal = () => {
@@ -1244,4 +1316,9 @@ const closeCarModal = () => {
   dom.carModal.classList.add('hidden');
   dom.carModal.setAttribute('aria-hidden', 'true');
   dom.carModalForm.reset();
+
+  dom.carBrandInput.innerHTML = '<option value="">Selecciona una marca...</option>';
+  dom.carBrandInput.disabled = false;
+  dom.carModelInput.innerHTML = '<option value="">Selecciona una marca primero...</option>';
+  dom.carModelInput.disabled = true;
 };
