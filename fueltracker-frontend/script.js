@@ -41,9 +41,21 @@ const dom = {
   brandHomeBtn: document.getElementById('brand-home-btn'),
   dashboardView: document.getElementById('dashboard-view'),
   profileView: document.getElementById('profile-view'),
+  profileAvatar: document.getElementById('profile-avatar'),
+  profileUserName: document.getElementById('profile-user-name'),
+  profileStatsCars: document.getElementById('profile-stats-cars'),
+  profileStatsRefuels: document.getElementById('profile-stats-refuels'),
+  profileStatsKm: document.getElementById('profile-stats-km'),
+  profileCarsList: document.getElementById('profile-cars-list'),
+  profileEditBtn: document.getElementById('profile-edit-btn'),
+  editProfileModal: document.getElementById('edit-profile-modal'),
+  editProfileForm: document.getElementById('edit-profile-form'),
+  editProfileNameInput: document.getElementById('edit-profile-name'),
+  editProfileCancelBtn: document.getElementById('edit-profile-cancel-btn'),
   userAvatarBtn: document.getElementById('user-avatar-btn'),
   userAvatarLabel: document.getElementById('user-avatar-label'),
   userDropdown: document.getElementById('user-dropdown'),
+  userDropdownName: document.getElementById('user-dropdown-name'),
   userLogoutBtn: document.getElementById('user-logout-btn'),
   userProfileLink: document.getElementById('user-profile-link'),
   kmInput: document.getElementById('km_since_last'),
@@ -105,6 +117,23 @@ function setupFormListeners() {
     event.preventDefault();
     showProfileView();
   });
+  if (dom.profileEditBtn) {
+    dom.profileEditBtn.addEventListener('click', openEditProfileModal);
+  }
+  if (dom.editProfileForm) {
+    dom.editProfileForm.addEventListener('submit', handleEditProfileSubmit);
+  }
+  if (dom.editProfileCancelBtn) {
+    dom.editProfileCancelBtn.addEventListener('click', closeEditProfileModal);
+  }
+  if (dom.editProfileModal) {
+    dom.editProfileModal.addEventListener('click', (event) => {
+      if (event.target === dom.editProfileModal) closeEditProfileModal();
+    });
+  }
+  if (dom.profileCarsList) {
+    dom.profileCarsList.addEventListener('click', handleProfileCarsListClick);
+  }
   dom.userAvatarBtn.addEventListener('click', handleAvatarClick);
   dom.userLogoutBtn.addEventListener('click', handleLogout);
   dom.carModal.addEventListener('click', (event) => {
@@ -235,7 +264,23 @@ const showProfileView = () => {
   if (!dom.dashboardView || !dom.profileView) return;
   dom.dashboardView.classList.add('hidden');
   dom.profileView.classList.remove('hidden');
+  loadProfileStats();
+  renderProfileCars();
   closeUserDropdown();
+};
+
+const openEditProfileModal = () => {
+  if (!dom.editProfileModal || !dom.editProfileNameInput) return;
+  dom.editProfileNameInput.value = getStoredUserDisplay() || '';
+  dom.editProfileModal.classList.remove('hidden');
+  dom.editProfileModal.classList.add('flex');
+  dom.editProfileNameInput.focus();
+};
+
+const closeEditProfileModal = () => {
+  if (!dom.editProfileModal) return;
+  dom.editProfileModal.classList.add('hidden');
+  dom.editProfileModal.classList.remove('flex');
 };
 
 function showAppScreen() {
@@ -284,8 +329,8 @@ const getStoredUserDisplay = () => {
   return '';
 };
 
-const getUserInitials = () => {
-  const displayName = getStoredUserDisplay();
+const getUserInitialsFromName = (name = '') => {
+  const displayName = name?.trim() || '';
 
   if (!displayName) {
     return 'U';
@@ -300,9 +345,30 @@ const getUserInitials = () => {
   return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
 };
 
+const getUserInitials = () => getUserInitialsFromName(getStoredUserDisplay());
+
 const updateUserAvatar = () => {
   if (!dom.userAvatarLabel) return;
   dom.userAvatarLabel.textContent = getUserInitials();
+};
+
+const syncProfileNameToUi = (name) => {
+  const safeName = name?.trim() || getStoredUserDisplay() || 'Usuario';
+  persistUserIdentity(safeName, '');
+
+  if (dom.profileUserName) {
+    dom.profileUserName.textContent = safeName;
+  }
+
+  if (dom.userDropdownName) {
+    dom.userDropdownName.textContent = safeName;
+  }
+
+  if (dom.profileAvatar) {
+    dom.profileAvatar.textContent = getUserInitialsFromName(safeName);
+  }
+
+  updateUserAvatar();
 };
 
 const closeUserDropdown = () => {
@@ -357,6 +423,7 @@ async function loadRefuels() {
 
     const json = await res.json();
     allRefuels = json.data;
+    loadProfileStats();
     setApiStatus(true);
     filterAndRenderTable();
   } catch (error) {
@@ -384,6 +451,8 @@ async function loadCars() {
 
     const json = await res.json();
     cars = json.data;
+    loadProfileStats();
+    renderProfileCars();
     populateActiveCarSelect(cars);
     if (cars.length > 0) {
       const nextCarId = activeCarId ?? cars[0].id;
@@ -398,6 +467,8 @@ async function loadCars() {
   } catch (error) {
     console.error('[loadCars]', error);
     cars = [];
+    loadProfileStats();
+    renderProfileCars();
     populateActiveCarSelect(cars);
     activeCarId = null;
     renderAll([]);
@@ -565,6 +636,104 @@ function renderStats(data) {
     ? totals.cost.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     : '—';
 }
+
+const loadProfileStats = () => {
+  const userName = getStoredUserDisplay() || 'Usuario';
+  const carsCount = cars.length;
+  const refuelsCount = allRefuels.length;
+  const totalKm = allRefuels.reduce((sum, refuel) => sum + Number.parseFloat(refuel.km_since_last || 0), 0);
+
+  syncProfileNameToUi(userName);
+
+  if (dom.profileStatsCars) {
+    dom.profileStatsCars.textContent = `${carsCount} coche${carsCount === 1 ? '' : 's'}`;
+  }
+
+  if (dom.profileStatsRefuels) {
+    dom.profileStatsRefuels.textContent = `${refuelsCount} repostaje${refuelsCount === 1 ? '' : 's'}`;
+  }
+
+  if (dom.profileStatsKm) {
+    dom.profileStatsKm.textContent = `${totalKm.toLocaleString('es-ES', { maximumFractionDigits: 0 })} km totales`;
+  }
+};
+
+const renderProfileCars = () => {
+  if (!dom.profileCarsList) return;
+
+  if (!cars.length) {
+    dom.profileCarsList.innerHTML = `
+      <div class="rounded-2xl border border-dashed border-dark-500 bg-dark-800/70 px-5 py-6 text-sm text-ink-muted">
+        No tienes coches todavía. Usa el botón de + para registrar tu primer vehículo.
+      </div>
+    `;
+    return;
+  }
+
+  dom.profileCarsList.innerHTML = cars.map((car) => `
+    <article
+      data-car-id="${car.id}"
+      class="rounded-2xl border border-dark-600 bg-dark-800 p-5 shadow-lg cursor-pointer transition-all duration-200 hover:border-fuel/70 hover:bg-dark-700/80"
+    >
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <p class="text-xs uppercase tracking-[0.2em] text-ink-faint">${car.brand || 'Marca'}</p>
+          <h4 class="mt-2 font-display text-xl font-600 uppercase tracking-wider text-ink">${car.model || 'Modelo'}</h4>
+          <p class="mt-2 text-sm text-ink-muted">${car.year || 'Año'} · ${car.plate || 'Sin matrícula'}</p>
+        </div>
+        <button type="button" data-action="delete-car" data-car-id="${car.id}" class="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-red-300 transition hover:bg-red-500/20">
+          <span class="inline-flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 6h18" />
+              <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+            </svg>
+            Eliminar
+          </span>
+        </button>
+      </div>
+      <div class="mt-4 flex flex-wrap gap-2 text-xs text-ink-muted">
+        <span class="rounded-full border border-dark-500 px-2.5 py-1">${allRefuels.filter((refuel) => Number(refuel.car_id) === Number(car.id)).length} repostajes</span>
+      </div>
+    </article>
+  `).join('');
+};
+
+const handleProfileCarsListClick = (event) => {
+  const button = event.target.closest('[data-action="delete-car"]');
+
+  if (button) {
+    event.stopPropagation();
+    event.preventDefault();
+    showToast('La eliminación de coches no está disponible todavía en la API actual.', 'error');
+    return;
+  }
+
+  const card = event.target.closest('[data-car-id]');
+  if (!card) return;
+
+  const carId = Number(card.dataset.carId);
+  if (!Number.isFinite(carId)) return;
+
+  setActiveCarId(carId, { shouldRender: true });
+  showDashboardView();
+};
+
+const handleEditProfileSubmit = (event) => {
+  event.preventDefault();
+
+  if (!dom.editProfileNameInput) return;
+
+  const updatedName = dom.editProfileNameInput.value.trim();
+  if (!updatedName) {
+    showToast('El nombre no puede estar vacío', 'error');
+    return;
+  }
+
+  syncProfileNameToUi(updatedName);
+  closeEditProfileModal();
+  showToast('Nombre actualizado correctamente', 'success');
+};
 
 function renderChart(data) {
   if (data.length < 2) {
