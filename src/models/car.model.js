@@ -2,7 +2,7 @@ const { query } = require('../db/connection');
 
 const crear = async (userId, brand, model, year) => {
   const resultado = await query(
-    `INSERT INTO cars (user_id, brand, model, year)
+    `INSERT INTO public.cars (user_id, brand, model, year)
      VALUES ($1, $2, $3, $4)
      RETURNING id, user_id, brand, model, year, created_at`,
     [userId, brand, model, year]
@@ -14,7 +14,7 @@ const crear = async (userId, brand, model, year) => {
 const obtenerPorUsuario = async (userId) => {
   const resultado = await query(
     `SELECT id, user_id, brand, model, year, created_at
-     FROM cars
+     FROM public.cars
      WHERE user_id = $1
      ORDER BY created_at DESC`,
     [userId]
@@ -26,7 +26,7 @@ const obtenerPorUsuario = async (userId) => {
 const obtenerPorIdYUsuario = async (id, userId) => {
   const resultado = await query(
     `SELECT id, user_id, brand, model, year, created_at
-     FROM cars
+     FROM public.cars
      WHERE id = $1 AND user_id = $2`,
     [id, userId]
   );
@@ -36,7 +36,7 @@ const obtenerPorIdYUsuario = async (id, userId) => {
 
 const eliminar = async (id, userId) => {
   const resultado = await query(
-    `DELETE FROM cars
+    `DELETE FROM public.cars
      WHERE id = $1 AND user_id = $2
      RETURNING id`,
     [id, userId]
