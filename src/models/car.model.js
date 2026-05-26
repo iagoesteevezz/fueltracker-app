@@ -34,4 +34,15 @@ const obtenerPorIdYUsuario = async (id, userId) => {
   return resultado.rows[0] || null;
 };
 
-module.exports = { crear, obtenerPorUsuario, obtenerPorIdYUsuario };
+const eliminar = async (id, userId) => {
+  const resultado = await query(
+    `DELETE FROM cars
+     WHERE id = $1 AND user_id = $2
+     RETURNING id`,
+    [id, userId]
+  );
+
+  return resultado.rowCount > 0;
+};
+
+module.exports = { crear, obtenerPorUsuario, obtenerPorIdYUsuario, eliminar };

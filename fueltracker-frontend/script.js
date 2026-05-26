@@ -171,9 +171,13 @@ async function handleRegister(e) {
       throw new Error(json.message || 'Error en el registro');
     }
 
+    const userPayload = json.data?.user || json.data || {};
+    const loggedUsername = userPayload.username || userPayload.name || username;
+
     token = json.data.token;
     localStorage.setItem('token', token);
-    persistUserIdentity(username, email);
+    persistUserIdentity(loggedUsername, email);
+    syncProfileNameToUi(loggedUsername);
     showToast('Cuenta creada correctamente', 'success');
     setTimeout(async () => {
       showAppScreen();
@@ -215,9 +219,13 @@ async function handleLogin(e) {
       throw new Error(json.message || 'Error en el login');
     }
 
+    const userPayload = json.data?.user || json.data || {};
+    const loggedUsername = userPayload.username || userPayload.name || '';
+
     token = json.data.token;
     localStorage.setItem('token', token);
-    persistUserIdentity('', email);
+    persistUserIdentity(loggedUsername, email);
+    syncProfileNameToUi(loggedUsername || getStoredUserDisplay());
     showToast('Sesión iniciada correctamente', 'success');
     setTimeout(async () => {
       showAppScreen();
@@ -308,25 +316,16 @@ const persistUserIdentity = (username, email) => {
   if (safeEmail) {
     localStorage.setItem('userEmail', safeEmail);
   }
-
-  if (!safeUsername && safeEmail) {
-    localStorage.setItem('userName', safeEmail.split('@')[0]);
-  }
 };
 
 const getStoredUserDisplay = () => {
   const savedName = localStorage.getItem('userName');
-  const savedEmail = localStorage.getItem('userEmail');
 
   if (savedName && savedName.trim()) {
     return savedName.trim();
   }
 
-  if (savedEmail && savedEmail.trim()) {
-    return savedEmail.trim();
-  }
-
-  return '';
+  return 'Usuario';
 };
 
 const getUserInitialsFromName = (name = '') => {
@@ -699,13 +698,61 @@ const renderProfileCars = () => {
   `).join('');
 };
 
-const handleProfileCarsListClick = (event) => {
+const handleProfileCarsListClick = async (event) => {
   const button = event.target.closest('[data-action="delete-car"]');
 
   if (button) {
     event.stopPropagation();
     event.preventDefault();
-    showToast('La eliminación de coches no está disponible todavía en la API actual.', 'error');
+
+    const carId = Number(button.dataset.carId);
+    if (!Number.isFinite(carId)) return;
+
+    const confirmed = window.confirm('¿Seguro que quieres eliminar este coche?');
+    if (!confirmed) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/cars/${carId}`, {
+        method: 'DELETE',
+        headers: getHeaders(),
+      });
+
+      if (!res.ok) {
+        const contentType = res.headers.get('content-type') || '';
+        let errorMessage = `HTTP ${res.status}`;
+
+        if (contentType.includes('application/json')) {
+          const json = await res.json();
+          errorMessage = json.message || errorMessage;
+        }
+
+        throw new Error(errorMessage);
+      }
+
+      cars = cars.filter((car) => car.id !== carId);
+      populateActiveCarSelect(cars);
+
+      if (activeCarId === carId) {
+        activeCarId = cars[0]?.id ?? null;
+      }
+
+      if (!activeCarId) {
+        if (dom.activeCarSelect) {
+          dom.activeCarSelect.value = '';
+        }
+        renderAll([]);
+      } else {
+        setActiveCarId(activeCarId, { shouldRender: true });
+      }
+
+      loadProfileStats();
+      renderProfileCars();
+      showToast('Coche eliminado correctamente', 'success');
+    } catch (error) {
+      console.error('[handleProfileCarsListClick]', error);
+      showToast(error.message || 'Error al eliminar el coche', 'error');
+    }
+
     return;
   }
 
@@ -719,7 +766,25 @@ const handleProfileCarsListClick = (event) => {
   showDashboardView();
 };
 
-const handleEditProfileSubmit = (event) => {
+const updateUserProfile = async (username) => {
+  const res = await fetch(`${API_BASE}/auth/me`, {
+    method: 'PATCH',
+    headers: getHeaders(),
+    body: JSON.stringify({ username }),
+  });
+
+  const contentType = res.headers.get('content-type') || '';
+  const json = contentType.includes('application/json') ? await res.json() : {};
+
+  if (!res.ok) {
+    throw new Error(json.message || `HTTP ${res.status}`);
+  }
+
+  const payload = json.data?.user || json.data || {};
+  return payload.username ? payload : { username };
+};
+
+const handleEditProfileSubmit = async (event) => {
   event.preventDefault();
 
   if (!dom.editProfileNameInput) return;
@@ -730,9 +795,15 @@ const handleEditProfileSubmit = (event) => {
     return;
   }
 
-  syncProfileNameToUi(updatedName);
-  closeEditProfileModal();
-  showToast('Nombre actualizado correctamente', 'success');
+  try {
+    const updatedProfile = await updateUserProfile(updatedName);
+    syncProfileNameToUi(updatedProfile.username || updatedName);
+    closeEditProfileModal();
+    showToast('Nombre actualizado correctamente', 'success');
+  } catch (error) {
+    console.error('[handleEditProfileSubmit]', error);
+    showToast(error.message || 'No se pudo actualizar el perfil', 'error');
+  }
 };
 
 function renderChart(data) {

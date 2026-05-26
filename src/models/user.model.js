@@ -86,6 +86,22 @@ const obtenerPorId = async (id) => {
   return resultado.rows[0] || null;
 };
 
+const actualizarNombre = async (id, username) => {
+  const resultado = await query(
+    `UPDATE users
+     SET username = $1
+     WHERE id = $2
+     RETURNING id, username, email, created_at`,
+    [username, id]
+  );
+
+  if (!resultado.rowCount) {
+    return null;
+  }
+
+  return resultado.rows[0] || null;
+};
+
 // ── Verificar contraseña ────────────────────────────────────
 // Compara la contraseña en texto plano con el hash almacenado.
 // bcrypt.compare devuelve true/false de forma segura.
@@ -98,5 +114,6 @@ module.exports = {
   obtenerPorEmail,
   obtenerPorUsername,
   obtenerPorId,
+  actualizarNombre,
   verificarPassword,
 };

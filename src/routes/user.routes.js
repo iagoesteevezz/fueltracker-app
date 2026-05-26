@@ -10,7 +10,8 @@
 // ============================================================
 
 const { Router } = require('express');
-const { registrar, login } = require('../controllers/user.controller');
+const { registrar, login, actualizarPerfil } = require('../controllers/user.controller');
+const { autenticar } = require('../middlewares/auth.middleware');
 
 const router = Router();
 
@@ -19,5 +20,8 @@ router.post('/register', registrar);
 
 // ── POST /api/v1/auth/login ────────────────────────────────
 router.post('/login', login);
+
+// ── PATCH /api/v1/users/me ───────────────────────────────────
+router.patch('/me', autenticar, actualizarPerfil);
 
 module.exports = router;

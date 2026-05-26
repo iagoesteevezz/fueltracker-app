@@ -51,10 +51,12 @@ const registrar = async (req, res) => {
       success: true,
       message: 'Usuario registrado correctamente',
       data: {
-        id: usuarioNuevo.id,
-        username: usuarioNuevo.username,
-        email: usuarioNuevo.email,
         token,
+        user: {
+          id: usuarioNuevo.id,
+          username: usuarioNuevo.username,
+          email: usuarioNuevo.email,
+        },
       },
     });
 
@@ -115,10 +117,12 @@ const login = async (req, res) => {
       success: true,
       message: 'Autenticación exitosa',
       data: {
-        id: usuario.id,
-        username: usuario.username,
-        email: usuario.email,
         token,
+        user: {
+          id: usuario.id,
+          username: usuario.username,
+          email: usuario.email,
+        },
       },
     });
 
@@ -131,4 +135,53 @@ const login = async (req, res) => {
   }
 };
 
-module.exports = { registrar, login };
+const actualizarPerfil = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { username } = req.body;
+
+    if (!username || !username.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'username es obligatorio',
+      });
+    }
+
+    const nombreNormalizado = username.trim();
+    const usuarioActualizado = await userModel.actualizarNombre(userId, nombreNormalizado);
+
+    if (!usuarioActualizado) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Nombre actualizado correctamente',
+      data: {
+        user: {
+          id: usuarioActualizado.id,
+          username: usuarioActualizado.username,
+          email: usuarioActualizado.email,
+        },
+      },
+    });
+  } catch (error) {
+    if (error.code === '23505') {
+      return res.status(409).json({
+        success: false,
+        message: 'El nombre de usuario ya está registrado',
+      });
+    }
+
+    console.error('[actualizarPerfil] Error inesperado:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+    });
+  }
+};
+
+module.exports = { registrar, login, actualizarPerfil };

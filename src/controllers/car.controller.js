@@ -55,4 +55,35 @@ const obtenerCoches = async (req, res) => {
   }
 };
 
-module.exports = { crearAuto, obtenerCoches };
+const eliminarAuto = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { id } = req.params;
+
+    const parsedId = Number(id);
+    if (!Number.isInteger(parsedId) || parsedId <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de coche inválido',
+      });
+    }
+
+    const eliminado = await carModel.eliminar(parsedId, userId);
+    if (!eliminado) {
+      return res.status(404).json({
+        success: false,
+        message: 'Coche no encontrado',
+      });
+    }
+
+    return res.status(204).send();
+  } catch (error) {
+    console.error('[eliminarAuto] Error inesperado:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+    });
+  }
+};
+
+module.exports = { crearAuto, obtenerCoches, eliminarAuto };
