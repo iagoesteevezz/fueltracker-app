@@ -9,7 +9,9 @@
     "build:frontend": "tsc --project fueltracker-frontend/tsconfig.json",
     "watch:frontend": "tsc --project fueltracker-frontend/tsconfig.json --watch",
     "db:migrate": "node -e \"const url = require('dotenv').config().parsed.DATABASE_URL; require('child_process').execSync('psql ' + url + ' -f src/db/migrations/001_create_refuels.sql', {stdio: 'inherit'})\"",
-    "db:migrate:users": "node -e \"const url = require('dotenv').config().parsed.DATABASE_URL; require('child_process').execSync('psql ' + url + ' -f src/db/migrations/002_create_users.sql', {stdio: 'inherit'})\""
+    "db:migrate:users": "node -e \"const url = require('dotenv').config().parsed.DATABASE_URL; require('child_process').execSync('psql ' + url + ' -f src/db/migrations/002_create_users.sql', {stdio: 'inherit'})\"",
+    "db:migrate:cars": "node -e \"require('dotenv').config(); const {Pool}=require('pg'); const pool=new Pool({connectionString:process.env.DATABASE_URL,ssl:false}); const fs=require('fs'); pool.query(fs.readFileSync('src/db/migrations/003_create_cars.sql','utf8')).then(()=>{console.log('OK');pool.end()}).catch(e=>{console.error(e.message);pool.end()})\""
+
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
