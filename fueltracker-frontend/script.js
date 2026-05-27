@@ -1,13 +1,16 @@
+"use strict";
+// ── Interfaces & Types ────────────────────────────────────────────────────
+// ── Global State ──────────────────────────────────────────────────────────
 const API_BASE = 'http://localhost:3000/api/v1';
-let allRefuels = [];           // Almacena todos los repostajes sin filtrar
-let refuels = [];              // Almacena los repostajes filtrados/ordenados para mostrar en tabla
-let cars = [];                 // Coches del usuario para el selector superior
-let activeCarId = null;        // Coche activo seleccionado en la barra superior
+let allRefuels = [];
+let refuels = [];
+let cars = [];
+let activeCarId = null;
 let chartInstance = null;
 let editModeId = null;
 let token = null;
-let currentSortField = null;   // Campo por el que se está ordenando
-let currentSortOrder = 'asc';  // 'asc' o 'desc'
+let currentSortField = null;
+let currentSortOrder = 'asc';
 let stationsMap = null;
 let stationsLayerGroup = null;
 let stationsUserMarker = null;
@@ -16,812 +19,725 @@ let allStationsData = [];
 let radiusCircle = null;
 let markersLayer = null;
 let userPosition = null;
-let favoriteStations = JSON.parse(localStorage.getItem('fuelTracker_favorites')) || [];
+let favoriteStations = JSON.parse(localStorage.getItem('fuelTracker_favorites') ?? '[]');
 let showOnlyFavorites = false;
 const STATION_RADIUS_KM = 15;
-
+// ── DOM References ────────────────────────────────────────────────────────
 const dom = {
-  authScreen: document.getElementById('auth-screen'),
-  appScreen: document.getElementById('app-screen'),
-  registerForm: document.getElementById('register-form'),
-  loginForm: document.getElementById('login-form'),
-  registerUsername: document.getElementById('register-username'),
-  registerEmail: document.getElementById('register-email'),
-  registerPassword: document.getElementById('register-password'),
-  registerBtn: document.getElementById('register-btn'),
-  registerText: document.getElementById('register-text'),
-  loginEmail: document.getElementById('login-email'),
-  loginPassword: document.getElementById('login-password'),
-  loginBtn: document.getElementById('login-btn'),
-  loginText: document.getElementById('login-text'),
-  logoutBtn: document.getElementById('logout-btn'),
-  statAvg: document.getElementById('stat-avg-consumption'),
-  statKm: document.getElementById('stat-total-km'),
-  statLiters: document.getElementById('stat-total-liters'),
-  statCost: document.getElementById('stat-total-cost'),
-  form: document.getElementById('refuel-form'),
-  carModalForm: document.getElementById('car-modal-form'),
-  carBrandInput: document.getElementById('car_brand'),
-  carModelInput: document.getElementById('car_model'),
-  carModelManualInput: document.getElementById('car-model-manual'),
-  carYearInput: document.getElementById('car_year'),
-  carModalSubmitBtn: document.getElementById('car-modal-submit-btn'),
-  activeCarSelect: document.getElementById('active-car-select'),
-  openCarModalBtn: document.getElementById('open-car-modal-btn'),
-  carModal: document.getElementById('car-modal'),
-  closeCarModalBtn: document.getElementById('close-car-modal-btn'),
-  brandHomeBtn: document.getElementById('brand-home-btn'),
-  dashboardView: document.getElementById('dashboard-view'),
-  profileView: document.getElementById('profile-view'),
-  profileAvatar: document.getElementById('profile-avatar'),
-  profileUserName: document.getElementById('profile-user-name'),
-  profileStatsCars: document.getElementById('profile-stats-cars'),
-  profileStatsRefuels: document.getElementById('profile-stats-refuels'),
-  profileStatsKm: document.getElementById('profile-stats-km'),
-  profileCarsList: document.getElementById('profile-cars-list'),
-  profileEditBtn: document.getElementById('profile-edit-btn'),
-  editProfileModal: document.getElementById('edit-profile-modal'),
-  editProfileForm: document.getElementById('edit-profile-form'),
-  editProfileNameInput: document.getElementById('edit-profile-name'),
-  editProfileCancelBtn: document.getElementById('edit-profile-cancel-btn'),
-  userAvatarBtn: document.getElementById('user-avatar-btn'),
-  userAvatarLabel: document.getElementById('user-avatar-label'),
-  userDropdown: document.getElementById('user-dropdown'),
-  userDropdownName: document.getElementById('user-dropdown-name'),
-  userLogoutBtn: document.getElementById('user-logout-btn'),
-  userProfileLink: document.getElementById('user-profile-link'),
-  kmInput: document.getElementById('km_since_last'),
-  litersInput: document.getElementById('liters_filled'),
-  priceInput: document.getElementById('price_per_liter'),
-  dateInput: document.getElementById('refuel_date'),
-  notesInput: document.getElementById('notes'),
-  preview: document.getElementById('consumption-preview'),
-  previewValue: document.getElementById('preview-value'),
-  submitBtn: document.getElementById('submit-btn'),
-  submitText: document.getElementById('submit-text'),
-  cancelEditBtn: document.getElementById('cancel-edit-btn'),
-  tbody: document.getElementById('refuels-tbody'),
-  tableLoading: document.getElementById('table-loading'),
-  tableEmpty: document.getElementById('table-empty'),
-  tableWrapper: document.getElementById('table-wrapper'),
-  tableCount: document.getElementById('table-count'),
-  chartCanvas: document.getElementById('consumption-chart'),
-  chartEmpty: document.getElementById('chart-empty'),
-  chartContainer: document.getElementById('chart-container'),
-  apiDot: document.getElementById('api-status-dot'),
-  apiText: document.getElementById('api-status-text'),
-  toast: document.getElementById('toast'),
-  toastMsg: document.getElementById('toast-message'),
-  searchNotesInput: document.getElementById('search-notes-input'),
-  navStationsBtn: document.getElementById('nav-stations-btn'),
-  stationsView: document.getElementById('stations-view'),
-  stationsList: document.getElementById('cheapest-stations-list'),
-  map: document.getElementById('map'),
-  radiusSlider: document.getElementById('radius-slider'),
-  radiusLabel: document.getElementById('radius-label'),
-  sortStations: document.getElementById('sort-stations'),
-  favoritesToggle: document.getElementById('favorites-toggle'),
+    authScreen: document.getElementById('auth-screen'),
+    appScreen: document.getElementById('app-screen'),
+    registerForm: document.getElementById('register-form'),
+    loginForm: document.getElementById('login-form'),
+    registerUsername: document.getElementById('register-username'),
+    registerEmail: document.getElementById('register-email'),
+    registerPassword: document.getElementById('register-password'),
+    registerBtn: document.getElementById('register-btn'),
+    registerText: document.getElementById('register-text'),
+    loginEmail: document.getElementById('login-email'),
+    loginPassword: document.getElementById('login-password'),
+    loginBtn: document.getElementById('login-btn'),
+    loginText: document.getElementById('login-text'),
+    logoutBtn: document.getElementById('logout-btn'),
+    statAvg: document.getElementById('stat-avg-consumption'),
+    statKm: document.getElementById('stat-total-km'),
+    statLiters: document.getElementById('stat-total-liters'),
+    statCost: document.getElementById('stat-total-cost'),
+    form: document.getElementById('refuel-form'),
+    carModalForm: document.getElementById('car-modal-form'),
+    carBrandInput: document.getElementById('car_brand'),
+    carModelInput: document.getElementById('car_model'),
+    carModelManualInput: document.getElementById('car-model-manual'),
+    carYearInput: document.getElementById('car_year'),
+    carModalSubmitBtn: document.getElementById('car-modal-submit-btn'),
+    activeCarSelect: document.getElementById('active-car-select'),
+    openCarModalBtn: document.getElementById('open-car-modal-btn'),
+    carModal: document.getElementById('car-modal'),
+    closeCarModalBtn: document.getElementById('close-car-modal-btn'),
+    brandHomeBtn: document.getElementById('brand-home-btn'),
+    dashboardView: document.getElementById('dashboard-view'),
+    profileView: document.getElementById('profile-view'),
+    profileAvatar: document.getElementById('profile-avatar'),
+    profileUserName: document.getElementById('profile-user-name'),
+    profileStatsCars: document.getElementById('profile-stats-cars'),
+    profileStatsRefuels: document.getElementById('profile-stats-refuels'),
+    profileStatsKm: document.getElementById('profile-stats-km'),
+    profileCarsList: document.getElementById('profile-cars-list'),
+    profileEditBtn: document.getElementById('profile-edit-btn'),
+    editProfileModal: document.getElementById('edit-profile-modal'),
+    editProfileForm: document.getElementById('edit-profile-form'),
+    editProfileNameInput: document.getElementById('edit-profile-name'),
+    editProfileCancelBtn: document.getElementById('edit-profile-cancel-btn'),
+    userAvatarBtn: document.getElementById('user-avatar-btn'),
+    userAvatarLabel: document.getElementById('user-avatar-label'),
+    userDropdown: document.getElementById('user-dropdown'),
+    userDropdownName: document.getElementById('user-dropdown-name'),
+    userLogoutBtn: document.getElementById('user-logout-btn'),
+    userProfileLink: document.getElementById('user-profile-link'),
+    kmInput: document.getElementById('km_since_last'),
+    litersInput: document.getElementById('liters_filled'),
+    priceInput: document.getElementById('price_per_liter'),
+    dateInput: document.getElementById('refuel_date'),
+    notesInput: document.getElementById('notes'),
+    preview: document.getElementById('consumption-preview'),
+    previewValue: document.getElementById('preview-value'),
+    submitBtn: document.getElementById('submit-btn'),
+    submitText: document.getElementById('submit-text'),
+    cancelEditBtn: document.getElementById('cancel-edit-btn'),
+    tbody: document.getElementById('refuels-tbody'),
+    tableLoading: document.getElementById('table-loading'),
+    tableEmpty: document.getElementById('table-empty'),
+    tableWrapper: document.getElementById('table-wrapper'),
+    tableCount: document.getElementById('table-count'),
+    chartCanvas: document.getElementById('consumption-chart'),
+    chartEmpty: document.getElementById('chart-empty'),
+    chartContainer: document.getElementById('chart-container'),
+    apiDot: document.getElementById('api-status-dot'),
+    apiText: document.getElementById('api-status-text'),
+    toast: document.getElementById('toast'),
+    toastMsg: document.getElementById('toast-message'),
+    searchNotesInput: document.getElementById('search-notes-input'),
+    navStationsBtn: document.getElementById('nav-stations-btn'),
+    stationsView: document.getElementById('stations-view'),
+    stationsList: document.getElementById('cheapest-stations-list'),
+    map: document.getElementById('map'),
+    radiusSlider: document.getElementById('radius-slider'),
+    radiusLabel: document.getElementById('radius-label'),
+    sortStations: document.getElementById('sort-stations'),
+    favoritesToggle: document.getElementById('favorites-toggle'),
 };
-
 let toastTimeout;
-
+// ── Bootstrap ─────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
-  token = localStorage.getItem('token');
-  if (token) {
-    showAppScreen();
-    setTodayAsDefault();
-    setupFormListeners();
-    await loadCars();
-    await loadRefuels();
-  } else {
+    token = localStorage.getItem('token');
+    if (token) {
+        showAppScreen();
+        setTodayAsDefault();
+        setupFormListeners();
+        await loadCars();
+        await loadRefuels();
+    }
+    else {
+        showAuthScreen();
+        setupAuthListeners();
+    }
+});
+// ── Auth Listeners ────────────────────────────────────────────────────────
+function setupAuthListeners() {
+    dom.registerForm.addEventListener('submit', handleRegister);
+    dom.loginForm.addEventListener('submit', handleLogin);
+}
+function setupFormListeners() {
+    dom.kmInput.addEventListener('input', updateConsumptionPreview);
+    dom.litersInput.addEventListener('input', updateConsumptionPreview);
+    dom.form.addEventListener('submit', handleSubmit);
+    dom.carModalForm.addEventListener('submit', handleCarSubmit);
+    dom.carBrandInput.addEventListener('change', handleCarBrandChange);
+    dom.carModelInput.addEventListener('change', handleCarModelChange);
+    dom.activeCarSelect.addEventListener('change', handleActiveCarChange);
+    dom.openCarModalBtn.addEventListener('click', openCarModal);
+    dom.closeCarModalBtn.addEventListener('click', closeCarModal);
+    dom.brandHomeBtn.addEventListener('click', showDashboardView);
+    if (dom.navStationsBtn) {
+        dom.navStationsBtn.addEventListener('click', showStationsView);
+    }
+    if (dom.radiusSlider) {
+        dom.radiusSlider.addEventListener('input', (event) => {
+            const value = Number(event.target.value);
+            if (dom.radiusLabel) {
+                dom.radiusLabel.textContent = `Radio de búsqueda: ${value} km`;
+            }
+            updateMapRadius(value);
+        });
+    }
+    if (dom.sortStations) {
+        dom.sortStations.addEventListener('change', () => {
+            updateMapRadius(Number(dom.radiusSlider?.value ?? 50));
+        });
+    }
+    if (dom.favoritesToggle) {
+        dom.favoritesToggle.addEventListener('click', () => {
+            showOnlyFavorites = !showOnlyFavorites;
+            dom.favoritesToggle.classList.toggle('bg-fuel/20', showOnlyFavorites);
+            dom.favoritesToggle.classList.toggle('text-fuel', showOnlyFavorites);
+            dom.favoritesToggle.classList.toggle('border-fuel', showOnlyFavorites);
+            dom.favoritesToggle.classList.toggle('text-slate-400', !showOnlyFavorites);
+            dom.favoritesToggle.classList.toggle('border-dark-600', !showOnlyFavorites);
+            updateMapRadius(Number(dom.radiusSlider?.value ?? 50));
+        });
+    }
+    dom.userProfileLink.addEventListener('click', (event) => {
+        event.preventDefault();
+        showProfileView();
+    });
+    if (dom.profileEditBtn) {
+        dom.profileEditBtn.addEventListener('click', openEditProfileModal);
+    }
+    if (dom.editProfileForm) {
+        dom.editProfileForm.addEventListener('submit', handleEditProfileSubmit);
+    }
+    if (dom.editProfileCancelBtn) {
+        dom.editProfileCancelBtn.addEventListener('click', closeEditProfileModal);
+    }
+    if (dom.editProfileModal) {
+        dom.editProfileModal.addEventListener('click', (event) => {
+            if (event.target === dom.editProfileModal)
+                closeEditProfileModal();
+        });
+    }
+    if (dom.profileCarsList) {
+        dom.profileCarsList.addEventListener('click', handleProfileCarsListClick);
+    }
+    dom.userAvatarBtn.addEventListener('click', handleAvatarClick);
+    dom.userLogoutBtn.addEventListener('click', handleLogout);
+    dom.carModal.addEventListener('click', (event) => {
+        if (event.target === dom.carModal)
+            closeCarModal();
+    });
+    dom.tbody.addEventListener('click', handleTableAction);
+    dom.cancelEditBtn.addEventListener('click', resetForm);
+    dom.searchNotesInput.addEventListener('input', filterAndRenderTable);
+    document.addEventListener('click', handleOutsideClick);
+}
+// ── Auth Handlers ─────────────────────────────────────────────────────────
+async function handleRegister(e) {
+    e.preventDefault();
+    const username = dom.registerUsername.value.trim();
+    const email = dom.registerEmail.value.trim();
+    const password = dom.registerPassword.value;
+    if (!username || !email || !password) {
+        showToast('Por favor rellena todos los campos', 'error');
+        return;
+    }
+    dom.registerBtn.disabled = true;
+    dom.registerText.textContent = 'Registrando...';
+    try {
+        const res = await fetch(`${API_BASE}/auth/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, email, password }),
+        });
+        const json = await res.json();
+        if (!res.ok) {
+            throw new Error(json.message ?? 'Error en el registro');
+        }
+        const userPayload = json.data?.user ?? json.data ?? {};
+        const loggedUsername = userPayload.username ?? userPayload.name ?? username;
+        token = json.data.token;
+        localStorage.setItem('token', token);
+        persistUserIdentity(loggedUsername, email);
+        syncProfileNameToUi(loggedUsername);
+        showToast('Cuenta creada correctamente', 'success');
+        setTimeout(async () => {
+            showAppScreen();
+            setTodayAsDefault();
+            setupFormListeners();
+            await loadCars();
+            await loadRefuels();
+        }, 1000);
+    }
+    catch (error) {
+        showToast(error.message ?? 'Error al registrar', 'error');
+    }
+    finally {
+        dom.registerBtn.disabled = false;
+        dom.registerText.textContent = 'Registrarse';
+    }
+}
+async function handleLogin(e) {
+    e.preventDefault();
+    const email = dom.loginEmail.value.trim();
+    const password = dom.loginPassword.value;
+    if (!email || !password) {
+        showToast('Por favor rellena todos los campos', 'error');
+        return;
+    }
+    dom.loginBtn.disabled = true;
+    dom.loginText.textContent = 'Iniciando sesión...';
+    try {
+        const res = await fetch(`${API_BASE}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password }),
+        });
+        const json = await res.json();
+        if (!res.ok) {
+            throw new Error(json.message ?? 'Error en el login');
+        }
+        const userPayload = json.data?.user ?? json.data ?? {};
+        const loggedUsername = userPayload.username ?? userPayload.name ?? '';
+        token = json.data.token;
+        localStorage.setItem('token', token);
+        persistUserIdentity(loggedUsername, email);
+        syncProfileNameToUi(loggedUsername || getStoredUserDisplay());
+        showToast('Sesión iniciada correctamente', 'success');
+        setTimeout(async () => {
+            showAppScreen();
+            setTodayAsDefault();
+            setupFormListeners();
+            await loadCars();
+            await loadRefuels();
+        }, 1000);
+    }
+    catch (error) {
+        showToast(error.message ?? 'Error al iniciar sesión', 'error');
+    }
+    finally {
+        dom.loginBtn.disabled = false;
+        dom.loginText.textContent = 'Iniciar sesión';
+    }
+}
+function handleLogout() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('userName');
+    localStorage.removeItem('userEmail');
+    token = null;
+    closeUserDropdown();
+    dom.registerForm.reset();
+    dom.loginForm.reset();
     showAuthScreen();
     setupAuthListeners();
-  }
-});
-
-function setupAuthListeners() {
-  dom.registerForm.addEventListener('submit', handleRegister);
-  dom.loginForm.addEventListener('submit', handleLogin);
+    showToast('Sesión cerrada correctamente', 'success');
 }
-
-function setupFormListeners() {
-  dom.kmInput.addEventListener('input', updateConsumptionPreview);
-  dom.litersInput.addEventListener('input', updateConsumptionPreview);
-  dom.form.addEventListener('submit', handleSubmit);
-  dom.carModalForm.addEventListener('submit', handleCarSubmit);
-  dom.carBrandInput.addEventListener('change', handleCarBrandChange);
-  dom.carModelInput.addEventListener('change', handleCarModelChange);
-  dom.activeCarSelect.addEventListener('change', handleActiveCarChange);
-  dom.openCarModalBtn.addEventListener('click', openCarModal);
-  dom.closeCarModalBtn.addEventListener('click', closeCarModal);
-  dom.brandHomeBtn.addEventListener('click', showDashboardView);
-  if (dom.navStationsBtn) {
-    dom.navStationsBtn.addEventListener('click', showStationsView);
-  }
-  if (dom.radiusSlider) {
-    dom.radiusSlider.addEventListener('input', (event) => {
-      const value = Number(event.target.value);
-      if (dom.radiusLabel) {
-        dom.radiusLabel.textContent = `Radio de búsqueda: ${value} km`;
-      }
-      updateMapRadius(value);
-    });
-  }
-  if (dom.sortStations) {
-    dom.sortStations.addEventListener('change', () => {
-      updateMapRadius(Number(dom.radiusSlider?.value || 50));
-    });
-  }
-  if (dom.favoritesToggle) {
-    dom.favoritesToggle.addEventListener('click', () => {
-      showOnlyFavorites = !showOnlyFavorites;
-      dom.favoritesToggle.classList.toggle('bg-fuel/20', showOnlyFavorites);
-      dom.favoritesToggle.classList.toggle('text-fuel', showOnlyFavorites);
-      dom.favoritesToggle.classList.toggle('border-fuel', showOnlyFavorites);
-      dom.favoritesToggle.classList.toggle('text-slate-400', !showOnlyFavorites);
-      dom.favoritesToggle.classList.toggle('border-dark-600', !showOnlyFavorites);
-      updateMapRadius(Number(dom.radiusSlider?.value || 50));
-    });
-  }
-  dom.userProfileLink.addEventListener('click', (event) => {
-    event.preventDefault();
-    showProfileView();
-  });
-  if (dom.profileEditBtn) {
-    dom.profileEditBtn.addEventListener('click', openEditProfileModal);
-  }
-  if (dom.editProfileForm) {
-    dom.editProfileForm.addEventListener('submit', handleEditProfileSubmit);
-  }
-  if (dom.editProfileCancelBtn) {
-    dom.editProfileCancelBtn.addEventListener('click', closeEditProfileModal);
-  }
-  if (dom.editProfileModal) {
-    dom.editProfileModal.addEventListener('click', (event) => {
-      if (event.target === dom.editProfileModal) closeEditProfileModal();
-    });
-  }
-  if (dom.profileCarsList) {
-    dom.profileCarsList.addEventListener('click', handleProfileCarsListClick);
-  }
-  dom.userAvatarBtn.addEventListener('click', handleAvatarClick);
-  dom.userLogoutBtn.addEventListener('click', handleLogout);
-  dom.carModal.addEventListener('click', (event) => {
-    if (event.target === dom.carModal) closeCarModal();
-  });
-  dom.tbody.addEventListener('click', handleTableAction);
-  dom.cancelEditBtn.addEventListener('click', resetForm);
-  dom.searchNotesInput.addEventListener('input', filterAndRenderTable);
-  document.addEventListener('click', handleOutsideClick);
-}
-
-async function handleRegister(e) {
-  e.preventDefault();
-  const username = dom.registerUsername.value.trim();
-  const email = dom.registerEmail.value.trim();
-  const password = dom.registerPassword.value;
-
-  if (!username || !email || !password) {
-    showToast('Por favor rellena todos los campos', 'error');
-    return;
-  }
-
-  dom.registerBtn.disabled = true;
-  dom.registerText.textContent = 'Registrando...';
-
-  try {
-    const res = await fetch(`${API_BASE}/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, email, password }),
-    });
-
-    const json = await res.json();
-    if (!res.ok) {
-      throw new Error(json.message || 'Error en el registro');
-    }
-
-    const userPayload = json.data?.user || json.data || {};
-    const loggedUsername = userPayload.username || userPayload.name || username;
-
-    token = json.data.token;
-    localStorage.setItem('token', token);
-    persistUserIdentity(loggedUsername, email);
-    syncProfileNameToUi(loggedUsername);
-    showToast('Cuenta creada correctamente', 'success');
-    setTimeout(async () => {
-      showAppScreen();
-      setTodayAsDefault();
-      setupFormListeners();
-      await loadCars();
-      await loadRefuels();
-    }, 1000);
-  } catch (error) {
-    showToast(error.message || 'Error al registrar', 'error');
-  } finally {
-    dom.registerBtn.disabled = false;
-    dom.registerText.textContent = 'Registrarse';
-  }
-}
-
-async function handleLogin(e) {
-  e.preventDefault();
-  const email = dom.loginEmail.value.trim();
-  const password = dom.loginPassword.value;
-
-  if (!email || !password) {
-    showToast('Por favor rellena todos los campos', 'error');
-    return;
-  }
-
-  dom.loginBtn.disabled = true;
-  dom.loginText.textContent = 'Iniciando sesión...';
-
-  try {
-    const res = await fetch(`${API_BASE}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
-
-    const json = await res.json();
-    if (!res.ok) {
-      throw new Error(json.message || 'Error en el login');
-    }
-
-    const userPayload = json.data?.user || json.data || {};
-    const loggedUsername = userPayload.username || userPayload.name || '';
-
-    token = json.data.token;
-    localStorage.setItem('token', token);
-    persistUserIdentity(loggedUsername, email);
-    syncProfileNameToUi(loggedUsername || getStoredUserDisplay());
-    showToast('Sesión iniciada correctamente', 'success');
-    setTimeout(async () => {
-      showAppScreen();
-      setTodayAsDefault();
-      setupFormListeners();
-      await loadCars();
-      await loadRefuels();
-    }, 1000);
-  } catch (error) {
-    showToast(error.message || 'Error al iniciar sesión', 'error');
-  } finally {
-    dom.loginBtn.disabled = false;
-    dom.loginText.textContent = 'Iniciar sesión';
-  }
-}
-
-function handleLogout() {
-  localStorage.removeItem('token');
-  localStorage.removeItem('userName');
-  localStorage.removeItem('userEmail');
-  token = null;
-  closeUserDropdown();
-  dom.registerForm.reset();
-  dom.loginForm.reset();
-  showAuthScreen();
-  setupAuthListeners();
-  showToast('Sesión cerrada correctamente', 'success');
-}
-
+// ── View Switching ────────────────────────────────────────────────────────
 function showAuthScreen() {
-  dom.authScreen.classList.remove('hidden');
-  dom.appScreen.classList.add('hidden');
-  closeUserDropdown();
+    dom.authScreen.classList.remove('hidden');
+    dom.appScreen.classList.add('hidden');
+    closeUserDropdown();
 }
-
 const showDashboardView = () => {
-  if (!dom.dashboardView || !dom.profileView || !dom.stationsView) return;
-  dom.dashboardView.classList.remove('hidden');
-  dom.profileView.classList.add('hidden');
-  dom.stationsView.classList.add('hidden');
-  closeUserDropdown();
+    if (!dom.dashboardView || !dom.profileView || !dom.stationsView)
+        return;
+    dom.dashboardView.classList.remove('hidden');
+    dom.profileView.classList.add('hidden');
+    dom.stationsView.classList.add('hidden');
+    closeUserDropdown();
 };
-
 const showProfileView = () => {
-  if (!dom.dashboardView || !dom.profileView || !dom.stationsView) return;
-  dom.dashboardView.classList.add('hidden');
-  dom.profileView.classList.remove('hidden');
-  dom.stationsView.classList.add('hidden');
-  loadProfileStats();
-  renderProfileCars();
-  closeUserDropdown();
+    if (!dom.dashboardView || !dom.profileView || !dom.stationsView)
+        return;
+    dom.dashboardView.classList.add('hidden');
+    dom.profileView.classList.remove('hidden');
+    dom.stationsView.classList.add('hidden');
+    loadProfileStats();
+    renderProfileCars();
+    closeUserDropdown();
 };
-
 const showStationsView = () => {
-  if (!dom.dashboardView || !dom.profileView || !dom.stationsView) return;
-  dom.dashboardView.classList.add('hidden');
-  dom.profileView.classList.add('hidden');
-  dom.stationsView.classList.remove('hidden');
-  closeUserDropdown();
-  initStationsMap();
+    if (!dom.dashboardView || !dom.profileView || !dom.stationsView)
+        return;
+    dom.dashboardView.classList.add('hidden');
+    dom.profileView.classList.add('hidden');
+    dom.stationsView.classList.remove('hidden');
+    closeUserDropdown();
+    initStationsMap();
 };
-
-const openEditProfileModal = () => {
-  if (!dom.editProfileModal || !dom.editProfileNameInput) return;
-  dom.editProfileNameInput.value = getStoredUserDisplay() || '';
-  dom.editProfileModal.classList.remove('hidden');
-  dom.editProfileModal.classList.add('flex');
-  dom.editProfileNameInput.focus();
-};
-
-const closeEditProfileModal = () => {
-  if (!dom.editProfileModal) return;
-  dom.editProfileModal.classList.add('hidden');
-  dom.editProfileModal.classList.remove('flex');
-};
-
 function showAppScreen() {
-  dom.authScreen.classList.add('hidden');
-  dom.appScreen.classList.remove('hidden');
-  updateUserAvatar();
-  showDashboardView();
+    dom.authScreen.classList.add('hidden');
+    dom.appScreen.classList.remove('hidden');
+    updateUserAvatar();
+    showDashboardView();
 }
-
+// ── Edit Profile Modal ────────────────────────────────────────────────────
+const openEditProfileModal = () => {
+    if (!dom.editProfileModal || !dom.editProfileNameInput)
+        return;
+    dom.editProfileNameInput.value = getStoredUserDisplay() ?? '';
+    dom.editProfileModal.classList.remove('hidden');
+    dom.editProfileModal.classList.add('flex');
+    dom.editProfileNameInput.focus();
+};
+const closeEditProfileModal = () => {
+    if (!dom.editProfileModal)
+        return;
+    dom.editProfileModal.classList.add('hidden');
+    dom.editProfileModal.classList.remove('flex');
+};
+// ── Auth Helpers ──────────────────────────────────────────────────────────
 function getHeaders() {
-  return {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${token}`,
-  };
+    return {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+    };
 }
-
 const persistUserIdentity = (username, email) => {
-  const safeUsername = username?.trim();
-  const safeEmail = email?.trim();
-
-  if (safeUsername) {
-    localStorage.setItem('userName', safeUsername);
-  }
-
-  if (safeEmail) {
-    localStorage.setItem('userEmail', safeEmail);
-  }
+    const safeUsername = username?.trim();
+    const safeEmail = email?.trim();
+    if (safeUsername)
+        localStorage.setItem('userName', safeUsername);
+    if (safeEmail)
+        localStorage.setItem('userEmail', safeEmail);
 };
-
 const getStoredUserDisplay = () => {
-  const savedName = localStorage.getItem('userName');
-
-  if (savedName && savedName.trim()) {
-    return savedName.trim();
-  }
-
-  return 'Usuario';
+    const savedName = localStorage.getItem('userName');
+    if (savedName && savedName.trim())
+        return savedName.trim();
+    return 'Usuario';
 };
-
 const getUserInitialsFromName = (name = '') => {
-  const displayName = name?.trim() || '';
-
-  if (!displayName) {
-    return 'U';
-  }
-
-  const parts = displayName.split(/\s+/).filter(Boolean);
-
-  if (parts.length === 1) {
-    return parts[0].slice(0, 2).toUpperCase();
-  }
-
-  return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    const displayName = name?.trim() ?? '';
+    if (!displayName)
+        return 'U';
+    const parts = displayName.split(/\s+/).filter(Boolean);
+    if (parts.length === 1)
+        return parts[0].slice(0, 2).toUpperCase();
+    return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
 };
-
 const getUserInitials = () => getUserInitialsFromName(getStoredUserDisplay());
-
 const updateUserAvatar = () => {
-  if (!dom.userAvatarLabel) return;
-  dom.userAvatarLabel.textContent = getUserInitials();
+    if (!dom.userAvatarLabel)
+        return;
+    dom.userAvatarLabel.textContent = getUserInitials();
 };
-
 const syncProfileNameToUi = (name) => {
-  const safeName = name?.trim() || getStoredUserDisplay() || 'Usuario';
-  persistUserIdentity(safeName, '');
-
-  if (dom.profileUserName) {
-    dom.profileUserName.textContent = safeName;
-  }
-
-  if (dom.userDropdownName) {
-    dom.userDropdownName.textContent = safeName;
-  }
-
-  if (dom.profileAvatar) {
-    dom.profileAvatar.textContent = getUserInitialsFromName(safeName);
-  }
-
-  updateUserAvatar();
+    const safeName = name?.trim() || getStoredUserDisplay() || 'Usuario';
+    persistUserIdentity(safeName, '');
+    if (dom.profileUserName)
+        dom.profileUserName.textContent = safeName;
+    if (dom.userDropdownName)
+        dom.userDropdownName.textContent = safeName;
+    if (dom.profileAvatar)
+        dom.profileAvatar.textContent = getUserInitialsFromName(safeName);
+    updateUserAvatar();
 };
-
 const closeUserDropdown = () => {
-  if (!dom.userDropdown || !dom.userAvatarBtn) return;
-  dom.userDropdown.classList.add('hidden');
-  dom.userAvatarBtn.setAttribute('aria-expanded', 'false');
+    if (!dom.userDropdown || !dom.userAvatarBtn)
+        return;
+    dom.userDropdown.classList.add('hidden');
+    dom.userAvatarBtn.setAttribute('aria-expanded', 'false');
 };
-
 const toggleUserDropdown = () => {
-  if (!dom.userDropdown || !dom.userAvatarBtn) return;
-  const isHidden = dom.userDropdown.classList.contains('hidden');
-
-  if (isHidden) {
-    dom.userDropdown.classList.remove('hidden');
-    dom.userAvatarBtn.setAttribute('aria-expanded', 'true');
-    return;
-  }
-
-  closeUserDropdown();
+    if (!dom.userDropdown || !dom.userAvatarBtn)
+        return;
+    const isHidden = dom.userDropdown.classList.contains('hidden');
+    if (isHidden) {
+        dom.userDropdown.classList.remove('hidden');
+        dom.userAvatarBtn.setAttribute('aria-expanded', 'true');
+        return;
+    }
+    closeUserDropdown();
 };
-
 const handleAvatarClick = (event) => {
-  event.stopPropagation();
-  toggleUserDropdown();
+    event.stopPropagation();
+    toggleUserDropdown();
 };
-
 const handleOutsideClick = (event) => {
-  if (!dom.userDropdown || !dom.userAvatarBtn) return;
-
-  if (dom.userAvatarBtn.contains(event.target) || dom.userDropdown.contains(event.target)) {
-    return;
-  }
-
-  closeUserDropdown();
+    if (!dom.userDropdown || !dom.userAvatarBtn)
+        return;
+    const target = event.target;
+    if (dom.userAvatarBtn.contains(target) || dom.userDropdown.contains(target))
+        return;
+    closeUserDropdown();
 };
-
+// ── Data Loading ──────────────────────────────────────────────────────────
 async function loadRefuels() {
-  try {
-    const res = await fetch(`${API_BASE}/refuels`, {
-      headers: getHeaders(),
-    });
-
-    if (!res.ok) {
-      if (res.status === 401) {
-        localStorage.removeItem('token');
-        token = null;
-        showAuthScreen();
-        return;
-      }
-      throw new Error(`HTTP ${res.status}`);
+    try {
+        const res = await fetch(`${API_BASE}/refuels`, { headers: getHeaders() });
+        if (!res.ok) {
+            if (res.status === 401) {
+                localStorage.removeItem('token');
+                token = null;
+                showAuthScreen();
+                return;
+            }
+            throw new Error(`HTTP ${res.status}`);
+        }
+        const json = await res.json();
+        allRefuels = json.data;
+        loadProfileStats();
+        setApiStatus(true);
+        filterAndRenderTable();
     }
-
-    const json = await res.json();
-    allRefuels = json.data;
-    loadProfileStats();
-    setApiStatus(true);
-    filterAndRenderTable();
-  } catch (error) {
-    console.error('[loadRefuels]', error);
-    setApiStatus(false);
-    showTableState('empty');
-  }
+    catch (error) {
+        console.error('[loadRefuels]', error);
+        setApiStatus(false);
+        showTableState('empty');
+    }
 }
-
 async function loadCars() {
-  try {
-    const res = await fetch(`${API_BASE}/cars`, {
-      headers: getHeaders(),
-    });
-
-    if (!res.ok) {
-      if (res.status === 401) {
-        localStorage.removeItem('token');
-        token = null;
-        showAuthScreen();
-        return;
-      }
-      throw new Error(`HTTP ${res.status}`);
+    try {
+        const res = await fetch(`${API_BASE}/cars`, { headers: getHeaders() });
+        if (!res.ok) {
+            if (res.status === 401) {
+                localStorage.removeItem('token');
+                token = null;
+                showAuthScreen();
+                return;
+            }
+            throw new Error(`HTTP ${res.status}`);
+        }
+        const json = await res.json();
+        cars = json.data;
+        loadProfileStats();
+        renderProfileCars();
+        populateActiveCarSelect(cars);
+        if (cars.length > 0) {
+            const nextCarId = activeCarId ?? cars[0].id;
+            setActiveCarId(nextCarId, { shouldRender: true });
+        }
+        else {
+            activeCarId = null;
+            if (dom.activeCarSelect)
+                dom.activeCarSelect.value = '';
+            renderAll([]);
+        }
     }
-
-    const json = await res.json();
-    cars = json.data;
-    loadProfileStats();
-    renderProfileCars();
-    populateActiveCarSelect(cars);
-    if (cars.length > 0) {
-      const nextCarId = activeCarId ?? cars[0].id;
-      setActiveCarId(nextCarId, { shouldRender: true });
-    } else {
-      activeCarId = null;
-      if (dom.activeCarSelect) {
-        dom.activeCarSelect.value = '';
-      }
-      renderAll([]);
+    catch (error) {
+        console.error('[loadCars]', error);
+        cars = [];
+        loadProfileStats();
+        renderProfileCars();
+        populateActiveCarSelect(cars);
+        activeCarId = null;
+        renderAll([]);
     }
-  } catch (error) {
-    console.error('[loadCars]', error);
-    cars = [];
-    loadProfileStats();
-    renderProfileCars();
-    populateActiveCarSelect(cars);
-    activeCarId = null;
-    renderAll([]);
-  }
 }
-
+// ── Car UI ────────────────────────────────────────────────────────────────
 function populateActiveCarSelect(items) {
-  if (!dom.activeCarSelect) return;
-  if (!items || items.length === 0) {
+    if (!dom.activeCarSelect)
+        return;
+    if (!items || items.length === 0) {
+        dom.activeCarSelect.innerHTML = `<option value="">No tienes coches registrados</option>`;
+        dom.activeCarSelect.disabled = true;
+        return;
+    }
     dom.activeCarSelect.innerHTML = `
-      <option value="">No tienes coches registrados</option>
-    `;
-    dom.activeCarSelect.disabled = true;
-    return;
-  }
-
-  dom.activeCarSelect.innerHTML = `
     <option value="">Selecciona un coche</option>
     ${items.map((car) => `<option value="${car.id}">${car.brand} ${car.model} - ${car.year}</option>`).join('')}
   `;
-  dom.activeCarSelect.disabled = false;
+    dom.activeCarSelect.disabled = false;
 }
-
 function setActiveCarId(carId, { shouldRender = true } = {}) {
-  activeCarId = carId ? Number(carId) : null;
-  if (dom.activeCarSelect) {
-    dom.activeCarSelect.value = activeCarId || '';
-  }
-  if (shouldRender) {
-    filterAndRenderTable();
-  }
+    activeCarId = carId ? Number(carId) : null;
+    if (dom.activeCarSelect)
+        dom.activeCarSelect.value = String(activeCarId ?? '');
+    if (shouldRender)
+        filterAndRenderTable();
 }
-
 function handleActiveCarChange(event) {
-  const selected = event.target.value;
-  setActiveCarId(selected);
+    const selected = event.target.value;
+    setActiveCarId(selected);
 }
-
 const fetchCarBrands = async () => {
-  try {
-    const res = await fetch('https://vpic.nhtsa.dot.gov/api/vehicles/GetMakesForVehicleType/car?format=json');
-
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`);
+    try {
+        const res = await fetch('https://vpic.nhtsa.dot.gov/api/vehicles/GetMakesForVehicleType/car?format=json');
+        if (!res.ok)
+            throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        const brands = (json.Results ?? [])
+            .map((item) => item.MakeName)
+            .filter(Boolean)
+            .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+        dom.carBrandInput.innerHTML =
+            '<option value="">Selecciona una marca...</option>' +
+                brands.map((brand) => `<option value="${brand}">${brand}</option>`).join('');
+        dom.carBrandInput.disabled = false;
+        dom.carModelInput.innerHTML = '<option value="">Selecciona una marca primero...</option>';
+        dom.carModelInput.disabled = true;
     }
-
-    const json = await res.json();
-    const brands = (json.Results || [])
-      .map((item) => item.MakeName)
-      .filter(Boolean)
-      .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
-
-    dom.carBrandInput.innerHTML = '<option value="">Selecciona una marca...</option>' + brands.map((brand) => `<option value="${brand}">${brand}</option>`).join('');
-    dom.carBrandInput.disabled = false;
-
-    dom.carModelInput.innerHTML = '<option value="">Selecciona una marca primero...</option>';
-    dom.carModelInput.disabled = true;
-  } catch (error) {
-    console.error('[fetchCarBrands]', error);
-    dom.carBrandInput.innerHTML = '<option value="">No se pudieron cargar las marcas</option>';
-    dom.carBrandInput.disabled = true;
-  }
+    catch (error) {
+        console.error('[fetchCarBrands]', error);
+        dom.carBrandInput.innerHTML = '<option value="">No se pudieron cargar las marcas</option>';
+        dom.carBrandInput.disabled = true;
+    }
 };
-
 const fetchCarModels = async (brand) => {
-  dom.carModelInput.disabled = true;
-  dom.carModelInput.innerHTML = '<option value="">Cargando modelos...</option>';
-
-  try {
-    const res = await fetch(`https://vpic.nhtsa.dot.gov/api/vehicles/GetModelsForMake/${encodeURIComponent(brand)}?format=json`);
-
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`);
-    }
-
-    const json = await res.json();
-    const models = (json.Results || [])
-      .map((item) => item.Model_Name)
-      .filter(Boolean)
-      .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
-
-    dom.carModelInput.innerHTML = '<option value="">Selecciona un modelo...</option>' + models.map((model) => `<option value="${model}">${model}</option>`).join('') + '<option value="otro">🔄 No encuentro mi modelo... (Escribir a mano)</option>';
-    dom.carModelInput.disabled = false;
-    dom.carModelInput.classList.remove('hidden');
-    dom.carModelManualInput.classList.add('hidden');
-    dom.carModelManualInput.removeAttribute('required');
-    dom.carModelManualInput.value = '';
-  } catch (error) {
-    console.error('[fetchCarModels]', error);
-    dom.carModelInput.innerHTML = '<option value="">No se pudieron cargar los modelos</option>';
     dom.carModelInput.disabled = true;
-  }
+    dom.carModelInput.innerHTML = '<option value="">Cargando modelos...</option>';
+    try {
+        const res = await fetch(`https://vpic.nhtsa.dot.gov/api/vehicles/GetModelsForMake/${encodeURIComponent(brand)}?format=json`);
+        if (!res.ok)
+            throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        const models = (json.Results ?? [])
+            .map((item) => item.Model_Name)
+            .filter(Boolean)
+            .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+        dom.carModelInput.innerHTML =
+            '<option value="">Selecciona un modelo...</option>' +
+                models.map((model) => `<option value="${model}">${model}</option>`).join('') +
+                '<option value="otro">🔄 No encuentro mi modelo... (Escribir a mano)</option>';
+        dom.carModelInput.disabled = false;
+        dom.carModelInput.classList.remove('hidden');
+        dom.carModelManualInput.classList.add('hidden');
+        dom.carModelManualInput.removeAttribute('required');
+        dom.carModelManualInput.value = '';
+    }
+    catch (error) {
+        console.error('[fetchCarModels]', error);
+        dom.carModelInput.innerHTML = '<option value="">No se pudieron cargar los modelos</option>';
+        dom.carModelInput.disabled = true;
+    }
 };
-
 const handleCarBrandChange = async (event) => {
-  const selectedBrand = event.target.value.trim();
-
-  if (!selectedBrand) {
-    dom.carModelInput.innerHTML = '<option value="">Selecciona una marca primero...</option>';
-    dom.carModelInput.disabled = true;
+    const selectedBrand = event.target.value.trim();
+    if (!selectedBrand) {
+        dom.carModelInput.innerHTML = '<option value="">Selecciona una marca primero...</option>';
+        dom.carModelInput.disabled = true;
+        dom.carModelInput.classList.remove('hidden');
+        dom.carModelManualInput.classList.add('hidden');
+        dom.carModelManualInput.removeAttribute('required');
+        dom.carModelManualInput.value = '';
+        return;
+    }
+    await fetchCarModels(selectedBrand);
+};
+const handleCarModelChange = () => {
+    if (dom.carModelInput.value === 'otro') {
+        dom.carModelInput.classList.add('hidden');
+        dom.carModelManualInput.classList.remove('hidden');
+        dom.carModelManualInput.setAttribute('required', 'required');
+        dom.carModelManualInput.focus();
+        return;
+    }
     dom.carModelInput.classList.remove('hidden');
     dom.carModelManualInput.classList.add('hidden');
     dom.carModelManualInput.removeAttribute('required');
     dom.carModelManualInput.value = '';
-    return;
-  }
-
-  await fetchCarModels(selectedBrand);
 };
-
-const handleCarModelChange = () => {
-  if (dom.carModelInput.value === 'otro') {
-    dom.carModelInput.classList.add('hidden');
-    dom.carModelManualInput.classList.remove('hidden');
-    dom.carModelManualInput.setAttribute('required', 'required');
-    dom.carModelManualInput.focus();
-    return;
-  }
-
-  dom.carModelInput.classList.remove('hidden');
-  dom.carModelManualInput.classList.add('hidden');
-  dom.carModelManualInput.removeAttribute('required');
-  dom.carModelManualInput.value = '';
-};
-
 async function createCar(data) {
-  const res = await fetch(`${API_BASE}/cars`, {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify(data),
-  });
-
-  const json = await res.json();
-  if (!res.ok) {
-    const msg = json.errors ? json.errors.join('. ') : json.message;
-    throw new Error(msg);
-  }
-  return json.data;
+    const res = await fetch(`${API_BASE}/cars`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(data),
+    });
+    const json = await res.json();
+    if (!res.ok) {
+        const msg = json.errors ? json.errors.join('. ') : json.message;
+        throw new Error(msg);
+    }
+    return json.data;
 }
-
 const handleCarSubmit = async (event) => {
-  event.preventDefault();
-
-  const selectedModel = dom.carModelInput.value.trim();
-  const manualModel = dom.carModelManualInput.value.trim();
-  const modelValue = selectedModel === 'otro' ? manualModel : selectedModel;
-
-  const payload = {
-    brand: dom.carBrandInput.value.trim(),
-    model: modelValue,
-    year: dom.carYearInput.value.trim(),
-  };
-
-  if (!payload.brand || !payload.model || !payload.year) {
-    showToast('Por favor completa marca, modelo y año', 'error');
-    return;
-  }
-
-  dom.carModalSubmitBtn.disabled = true;
-  dom.carModalSubmitBtn.textContent = 'Registrando...';
-
-  try {
-    const createdCar = await createCar(payload);
-    cars.unshift(createdCar);
-    populateActiveCarSelect(cars);
-    if (!activeCarId) {
-      setActiveCarId(createdCar.id);
+    event.preventDefault();
+    const selectedModel = dom.carModelInput.value.trim();
+    const manualModel = dom.carModelManualInput.value.trim();
+    const modelValue = selectedModel === 'otro' ? manualModel : selectedModel;
+    const payload = {
+        brand: dom.carBrandInput.value.trim(),
+        model: modelValue,
+        year: dom.carYearInput.value.trim(),
+    };
+    if (!payload.brand || !payload.model || !payload.year) {
+        showToast('Por favor completa marca, modelo y año', 'error');
+        return;
     }
-    dom.carModalForm.reset();
-    closeCarModal();
-    showToast('Vehículo registrado correctamente', 'success');
-  } catch (error) {
-    console.error('[handleCarSubmit]', error);
-    showToast(error.message || 'Error al registrar el vehículo', 'error');
-  } finally {
-    dom.carModalSubmitBtn.disabled = false;
-    dom.carModalSubmitBtn.textContent = 'Registrar vehículo';
-  }
+    dom.carModalSubmitBtn.disabled = true;
+    dom.carModalSubmitBtn.textContent = 'Registrando...';
+    try {
+        const createdCar = await createCar(payload);
+        cars.unshift(createdCar);
+        populateActiveCarSelect(cars);
+        if (!activeCarId)
+            setActiveCarId(createdCar.id);
+        dom.carModalForm.reset();
+        closeCarModal();
+        showToast('Vehículo registrado correctamente', 'success');
+    }
+    catch (error) {
+        console.error('[handleCarSubmit]', error);
+        showToast(error.message ?? 'Error al registrar el vehículo', 'error');
+    }
+    finally {
+        dom.carModalSubmitBtn.disabled = false;
+        dom.carModalSubmitBtn.textContent = 'Registrar vehículo';
+    }
 };
-
+// ── Refuel CRUD ───────────────────────────────────────────────────────────
 async function createRefuel(data) {
-  const res = await fetch(`${API_BASE}/refuels`, {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify(data),
-  });
-
-  const json = await res.json();
-  if (!res.ok) {
-    const msg = json.errors ? json.errors.join('. ') : json.message;
-    throw new Error(msg);
-  }
-  return json.data;
-}
-
-async function updateRefuel(id, data) {
-  const res = await fetch(`${API_BASE}/refuels/${id}`, {
-    method: 'PUT',
-    headers: getHeaders(),
-    body: JSON.stringify(data),
-  });
-
-  const json = await res.json();
-  if (!res.ok) {
-    const msg = json.errors ? json.errors.join('. ') : json.message;
-    throw new Error(msg);
-  }
-  return json.data;
-}
-
-async function deleteRefuel(id) {
-  const res = await fetch(`${API_BASE}/refuels/${id}`, {
-    method: 'DELETE',
-    headers: getHeaders(),
-  });
-
-  const json = await res.json();
-  if (!res.ok) {
-    const msg = json.message || 'Error al eliminar el repostaje';
-    throw new Error(msg);
-  }
-  return true;
-}
-
-function renderAll(data) {
-  renderStats(data);
-  renderChart(data);
-  renderTable(data);
-  updateSortIndicators();
-}
-
-function renderStats(data) {
-  if (data.length === 0) {
-    dom.statAvg.textContent = '—';
-    dom.statKm.textContent = '—';
-    dom.statLiters.textContent = '—';
-    dom.statCost.textContent = '—';
-    return;
-  }
-
-  const totals = data.reduce((acc, r) => {
-    acc.km += Number.parseFloat(r.km_since_last);
-    acc.liters += Number.parseFloat(r.liters_filled);
-    acc.sumConsump += Number.parseFloat(r.avg_consumption);
-    if (r.price_per_liter) {
-      acc.cost += Number.parseFloat(r.liters_filled) * Number.parseFloat(r.price_per_liter);
+    const res = await fetch(`${API_BASE}/refuels`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(data),
+    });
+    const json = await res.json();
+    if (!res.ok) {
+        const msg = json.errors ? json.errors.join('. ') : json.message;
+        throw new Error(msg);
     }
-    return acc;
-  }, { km: 0, liters: 0, sumConsump: 0, cost: 0 });
-
-  const avgConsumption = totals.sumConsump / data.length;
-  dom.statAvg.textContent = avgConsumption.toFixed(2);
-  dom.statKm.textContent = totals.km.toLocaleString('es-ES', { maximumFractionDigits: 0 });
-  dom.statLiters.textContent = totals.liters.toFixed(1);
-  dom.statCost.textContent = totals.cost > 0
-    ? totals.cost.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-    : '—';
+    return json.data;
 }
-
+async function updateRefuel(id, data) {
+    const res = await fetch(`${API_BASE}/refuels/${id}`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify(data),
+    });
+    const json = await res.json();
+    if (!res.ok) {
+        const msg = json.errors ? json.errors.join('. ') : json.message;
+        throw new Error(msg);
+    }
+    return json.data;
+}
+async function deleteRefuel(id) {
+    const res = await fetch(`${API_BASE}/refuels/${id}`, {
+        method: 'DELETE',
+        headers: getHeaders(),
+    });
+    const json = await res.json();
+    if (!res.ok) {
+        const msg = json.message ?? 'Error al eliminar el repostaje';
+        throw new Error(msg);
+    }
+    return true;
+}
+// ── Render ────────────────────────────────────────────────────────────────
+function renderAll(data) {
+    renderStats(data);
+    renderChart(data);
+    renderTable(data);
+    updateSortIndicators();
+}
+function renderStats(data) {
+    if (data.length === 0) {
+        dom.statAvg.textContent = '—';
+        dom.statKm.textContent = '—';
+        dom.statLiters.textContent = '—';
+        dom.statCost.textContent = '—';
+        return;
+    }
+    const totals = data.reduce((acc, r) => {
+        acc.km += Number.parseFloat(String(r.km_since_last));
+        acc.liters += Number.parseFloat(String(r.liters_filled));
+        acc.sumConsump += Number.parseFloat(String(r.avg_consumption));
+        if (r.price_per_liter) {
+            acc.cost += Number.parseFloat(String(r.liters_filled)) * Number.parseFloat(String(r.price_per_liter));
+        }
+        return acc;
+    }, { km: 0, liters: 0, sumConsump: 0, cost: 0 });
+    const avgConsumption = totals.sumConsump / data.length;
+    dom.statAvg.textContent = avgConsumption.toFixed(2);
+    dom.statKm.textContent = totals.km.toLocaleString('es-ES', { maximumFractionDigits: 0 });
+    dom.statLiters.textContent = totals.liters.toFixed(1);
+    dom.statCost.textContent = totals.cost > 0
+        ? totals.cost.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        : '—';
+}
 const loadProfileStats = () => {
-  const userName = getStoredUserDisplay() || 'Usuario';
-  const carsCount = cars.length;
-  const refuelsCount = allRefuels.length;
-  const totalKm = allRefuels.reduce((sum, refuel) => sum + Number.parseFloat(refuel.km_since_last || 0), 0);
-
-  syncProfileNameToUi(userName);
-
-  if (dom.profileStatsCars) {
-    dom.profileStatsCars.textContent = `${carsCount} coche${carsCount === 1 ? '' : 's'}`;
-  }
-
-  if (dom.profileStatsRefuels) {
-    dom.profileStatsRefuels.textContent = `${refuelsCount} repostaje${refuelsCount === 1 ? '' : 's'}`;
-  }
-
-  if (dom.profileStatsKm) {
-    dom.profileStatsKm.textContent = `${totalKm.toLocaleString('es-ES', { maximumFractionDigits: 0 })} km totales`;
-  }
+    const userName = getStoredUserDisplay() || 'Usuario';
+    const carsCount = cars.length;
+    const refuelsCount = allRefuels.length;
+    const totalKm = allRefuels.reduce((sum, refuel) => sum + Number.parseFloat(String(refuel.km_since_last || 0)), 0);
+    syncProfileNameToUi(userName);
+    if (dom.profileStatsCars)
+        dom.profileStatsCars.textContent = `${carsCount} coche${carsCount === 1 ? '' : 's'}`;
+    if (dom.profileStatsRefuels)
+        dom.profileStatsRefuels.textContent = `${refuelsCount} repostaje${refuelsCount === 1 ? '' : 's'}`;
+    if (dom.profileStatsKm)
+        dom.profileStatsKm.textContent = `${totalKm.toLocaleString('es-ES', { maximumFractionDigits: 0 })} km totales`;
 };
-
 const renderProfileCars = () => {
-  if (!dom.profileCarsList) return;
-
-  if (!cars.length) {
-    dom.profileCarsList.innerHTML = `
+    if (!dom.profileCarsList)
+        return;
+    if (!cars.length) {
+        dom.profileCarsList.innerHTML = `
       <div class="rounded-2xl border border-dashed border-dark-500 bg-dark-800/70 px-5 py-6 text-sm text-ink-muted">
         No tienes coches todavía. Usa el botón de + para registrar tu primer vehículo.
       </div>
     `;
-    return;
-  }
-
-  dom.profileCarsList.innerHTML = cars.map((car) => `
+        return;
+    }
+    dom.profileCarsList.innerHTML = cars.map((car) => `
     <article
       data-car-id="${car.id}"
       class="rounded-2xl border border-dark-600 bg-dark-800 p-5 shadow-lg cursor-pointer transition-all duration-200 hover:border-fuel/70 hover:bg-dark-700/80"
@@ -835,9 +751,7 @@ const renderProfileCars = () => {
         <button type="button" data-action="delete-car" data-car-id="${car.id}" class="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-red-300 transition hover:bg-red-500/20">
           <span class="inline-flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 6h18" />
-              <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+              <path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
             </svg>
             Eliminar
           </span>
@@ -849,219 +763,198 @@ const renderProfileCars = () => {
     </article>
   `).join('');
 };
-
 const handleProfileCarsListClick = async (event) => {
-  const button = event.target.closest('[data-action="delete-car"]');
-
-  if (button) {
-    event.stopPropagation();
-    event.preventDefault();
-
-    const carId = Number(button.dataset.carId);
-    if (!Number.isFinite(carId)) return;
-
-    const confirmed = window.confirm('¿Seguro que quieres eliminar este coche?');
-    if (!confirmed) return;
-
-    try {
-      const res = await fetch(`${API_BASE}/cars/${carId}`, {
-        method: 'DELETE',
-        headers: getHeaders(),
-      });
-
-      if (!res.ok) {
-        const contentType = res.headers.get('content-type') || '';
-        let errorMessage = `HTTP ${res.status}`;
-
-        if (contentType.includes('application/json')) {
-          const json = await res.json();
-          errorMessage = json.message || errorMessage;
+    const target = event.target;
+    const button = target.closest('[data-action="delete-car"]');
+    if (button) {
+        event.stopPropagation();
+        event.preventDefault();
+        const carId = Number(button.dataset.carId);
+        if (!Number.isFinite(carId))
+            return;
+        const confirmed = window.confirm('¿Seguro que quieres eliminar este coche?');
+        if (!confirmed)
+            return;
+        try {
+            const res = await fetch(`${API_BASE}/cars/${carId}`, {
+                method: 'DELETE',
+                headers: getHeaders(),
+            });
+            if (!res.ok) {
+                const contentType = res.headers.get('content-type') ?? '';
+                let errorMessage = `HTTP ${res.status}`;
+                if (contentType.includes('application/json')) {
+                    const json = await res.json();
+                    errorMessage = json.message ?? errorMessage;
+                }
+                throw new Error(errorMessage);
+            }
+            cars = cars.filter((car) => car.id !== carId);
+            populateActiveCarSelect(cars);
+            if (activeCarId === carId)
+                activeCarId = cars[0]?.id ?? null;
+            if (!activeCarId) {
+                if (dom.activeCarSelect)
+                    dom.activeCarSelect.value = '';
+                renderAll([]);
+            }
+            else {
+                setActiveCarId(activeCarId, { shouldRender: true });
+            }
+            loadProfileStats();
+            renderProfileCars();
+            showToast('Coche eliminado correctamente', 'success');
         }
-
-        throw new Error(errorMessage);
-      }
-
-      cars = cars.filter((car) => car.id !== carId);
-      populateActiveCarSelect(cars);
-
-      if (activeCarId === carId) {
-        activeCarId = cars[0]?.id ?? null;
-      }
-
-      if (!activeCarId) {
-        if (dom.activeCarSelect) {
-          dom.activeCarSelect.value = '';
+        catch (error) {
+            console.error('[handleProfileCarsListClick]', error);
+            showToast(error.message ?? 'Error al eliminar el coche', 'error');
         }
-        renderAll([]);
-      } else {
-        setActiveCarId(activeCarId, { shouldRender: true });
-      }
-
-      loadProfileStats();
-      renderProfileCars();
-      showToast('Coche eliminado correctamente', 'success');
-    } catch (error) {
-      console.error('[handleProfileCarsListClick]', error);
-      showToast(error.message || 'Error al eliminar el coche', 'error');
+        return;
     }
-
-    return;
-  }
-
-  const card = event.target.closest('[data-car-id]');
-  if (!card) return;
-
-  const carId = Number(card.dataset.carId);
-  if (!Number.isFinite(carId)) return;
-
-  setActiveCarId(carId, { shouldRender: true });
-  showDashboardView();
+    const card = target.closest('[data-car-id]');
+    if (!card)
+        return;
+    const carId = Number(card.dataset.carId);
+    if (!Number.isFinite(carId))
+        return;
+    setActiveCarId(carId, { shouldRender: true });
+    showDashboardView();
 };
-
 const updateUserProfile = async (username) => {
-  const res = await fetch(`${API_BASE}/auth/me`, {
-    method: 'PATCH',
-    headers: getHeaders(),
-    body: JSON.stringify({ username }),
-  });
-
-  const contentType = res.headers.get('content-type') || '';
-  const json = contentType.includes('application/json') ? await res.json() : {};
-
-  if (!res.ok) {
-    throw new Error(json.message || `HTTP ${res.status}`);
-  }
-
-  const payload = json.data?.user || json.data || {};
-  return payload.username ? payload : { username };
+    const res = await fetch(`${API_BASE}/auth/me`, {
+        method: 'PATCH',
+        headers: getHeaders(),
+        body: JSON.stringify({ username }),
+    });
+    const contentType = res.headers.get('content-type') ?? '';
+    const json = contentType.includes('application/json')
+        ? await res.json()
+        : {};
+    if (!res.ok)
+        throw new Error(json.message ?? `HTTP ${res.status}`);
+    const payload = json.data?.user ?? json.data ?? {};
+    return payload.username ? payload : { username };
 };
-
 const handleEditProfileSubmit = async (event) => {
-  event.preventDefault();
-
-  if (!dom.editProfileNameInput) return;
-
-  const updatedName = dom.editProfileNameInput.value.trim();
-  if (!updatedName) {
-    showToast('El nombre no puede estar vacío', 'error');
-    return;
-  }
-
-  try {
-    const updatedProfile = await updateUserProfile(updatedName);
-    syncProfileNameToUi(updatedProfile.username || updatedName);
-    closeEditProfileModal();
-    showToast('Nombre actualizado correctamente', 'success');
-  } catch (error) {
-    console.error('[handleEditProfileSubmit]', error);
-    showToast(error.message || 'No se pudo actualizar el perfil', 'error');
-  }
+    event.preventDefault();
+    if (!dom.editProfileNameInput)
+        return;
+    const updatedName = dom.editProfileNameInput.value.trim();
+    if (!updatedName) {
+        showToast('El nombre no puede estar vacío', 'error');
+        return;
+    }
+    try {
+        const updatedProfile = await updateUserProfile(updatedName);
+        syncProfileNameToUi(updatedProfile.username ?? updatedName);
+        closeEditProfileModal();
+        showToast('Nombre actualizado correctamente', 'success');
+    }
+    catch (error) {
+        console.error('[handleEditProfileSubmit]', error);
+        showToast(error.message ?? 'No se pudo actualizar el perfil', 'error');
+    }
 };
-
+// ── Chart ─────────────────────────────────────────────────────────────────
 function renderChart(data) {
-  if (data.length < 2) {
-    dom.chartEmpty.classList.remove('hidden');
-    dom.chartContainer.classList.add('hidden');
-    return;
-  }
-
-  dom.chartEmpty.classList.add('hidden');
-  dom.chartContainer.classList.remove('hidden');
-  const sorted = [...data].reverse();
-  const labels = sorted.map(r => formatDate(r.refuel_date));
-  const values = sorted.map(r => Number.parseFloat(r.avg_consumption));
-
-  if (chartInstance) {
-    chartInstance.destroy();
-    chartInstance = null;
-  }
-
-  chartInstance = new Chart(dom.chartCanvas, {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [{
-        label: 'L/100km',
-        data: values,
-        borderColor: '#f97316',
-        borderWidth: 2,
-        fill: true,
-        backgroundColor: (ctx) => {
-          const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, ctx.chart.height);
-          gradient.addColorStop(0, 'rgba(249, 115, 22, 0.25)');
-          gradient.addColorStop(1, 'rgba(249, 115, 22, 0)');
-          return gradient;
+    if (data.length < 2) {
+        dom.chartEmpty.classList.remove('hidden');
+        dom.chartContainer.classList.add('hidden');
+        return;
+    }
+    dom.chartEmpty.classList.add('hidden');
+    dom.chartContainer.classList.remove('hidden');
+    const sorted = [...data].reverse();
+    const labels = sorted.map((r) => formatDate(r.refuel_date));
+    const values = sorted.map((r) => Number.parseFloat(String(r.avg_consumption)));
+    if (chartInstance) {
+        chartInstance.destroy();
+        chartInstance = null;
+    }
+    chartInstance = new Chart(dom.chartCanvas, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [{
+                    label: 'L/100km',
+                    data: values,
+                    borderColor: '#f97316',
+                    borderWidth: 2,
+                    fill: true,
+                    backgroundColor: (ctx) => {
+                        const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, ctx.chart.height);
+                        gradient.addColorStop(0, 'rgba(249, 115, 22, 0.25)');
+                        gradient.addColorStop(1, 'rgba(249, 115, 22, 0)');
+                        return gradient;
+                    },
+                    pointBackgroundColor: '#f97316',
+                    pointBorderColor: '#07090d',
+                    pointBorderWidth: 2,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    tension: 0.35,
+                }],
         },
-        pointBackgroundColor: '#f97316',
-        pointBorderColor: '#07090d',
-        pointBorderWidth: 2,
-        pointRadius: 5,
-        pointHoverRadius: 7,
-        tension: 0.35,
-      }],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: '#161b22',
-          borderColor: '#30363d',
-          borderWidth: 1,
-          titleColor: '#8b949e',
-          bodyColor: '#e6edf3',
-          padding: 12,
-          callbacks: { label: (ctx) => ` ${ctx.parsed.y.toFixed(2)} L/100km` },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#161b22',
+                    borderColor: '#30363d',
+                    borderWidth: 1,
+                    titleColor: '#8b949e',
+                    bodyColor: '#e6edf3',
+                    padding: 12,
+                    callbacks: { label: (ctx) => ` ${ctx.parsed.y.toFixed(2)} L/100km` },
+                },
+            },
+            scales: {
+                x: {
+                    grid: { color: '#21262d', drawBorder: false },
+                    ticks: { color: '#8b949e', font: { family: 'JetBrains Mono', size: 11 } },
+                },
+                y: {
+                    grid: { color: '#21262d', drawBorder: false },
+                    ticks: {
+                        color: '#8b949e',
+                        font: { family: 'JetBrains Mono', size: 11 },
+                        callback: (v) => v.toFixed(1),
+                    },
+                    grace: '10%',
+                },
+            },
         },
-      },
-      scales: {
-        x: {
-          grid: { color: '#21262d', drawBorder: false },
-          ticks: { color: '#8b949e', font: { family: 'JetBrains Mono', size: 11 } },
-        },
-        y: {
-          grid: { color: '#21262d', drawBorder: false },
-          ticks: {
-            color: '#8b949e',
-            font: { family: 'JetBrains Mono', size: 11 },
-            callback: (v) => v.toFixed(1),
-          },
-          grace: '10%',
-        },
-      },
-    },
-  });
+    });
 }
-
+// ── Table ─────────────────────────────────────────────────────────────────
 function renderTable(data) {
-  if (data.length === 0) {
-    showTableState('empty');
-    return;
-  }
-
-  showTableState('data');
-  dom.tableCount.textContent = `${data.length} registro${data.length !== 1 ? 's' : ''}`;
-  dom.tbody.innerHTML = data.map((r, i) => {
-    const consumption = Number.parseFloat(r.avg_consumption);
-    const totalCost = r.price_per_liter
-      ? (Number.parseFloat(r.liters_filled) * Number.parseFloat(r.price_per_liter)).toFixed(2)
-      : '—';
-    const badgeClass = consumption < 6  ? 'consumption-good'
-                     : consumption < 8  ? 'consumption-average'
-                     :                    'consumption-bad';
-    const delay = Math.min(i * 50, 500);
-
-    return `
+    if (data.length === 0) {
+        showTableState('empty');
+        return;
+    }
+    showTableState('data');
+    dom.tableCount.textContent = `${data.length} registro${data.length !== 1 ? 's' : ''}`;
+    dom.tbody.innerHTML = data.map((r, i) => {
+        const consumption = Number.parseFloat(String(r.avg_consumption));
+        const totalCost = r.price_per_liter
+            ? (Number.parseFloat(String(r.liters_filled)) * Number.parseFloat(String(r.price_per_liter))).toFixed(2)
+            : '—';
+        const badgeClass = consumption < 6 ? 'consumption-good'
+            : consumption < 8 ? 'consumption-average'
+                : 'consumption-bad';
+        const delay = Math.min(i * 50, 500);
+        return `
       <tr class="table-row-fade border-b border-dark-700 hover:bg-dark-700/40 transition-colors" data-animation-delay="${delay}">
         <td class="px-6 py-4 font-mono text-sm text-ink">${formatDate(r.refuel_date)}</td>
-        <td class="px-4 py-4 font-mono text-sm text-right text-ink">${Number.parseFloat(r.km_since_last).toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}<span class="text-ink-faint text-xs ml-1">km</span></td>
-        <td class="px-4 py-4 font-mono text-sm text-right text-ink">${Number.parseFloat(r.liters_filled).toFixed(3)}<span class="text-ink-faint text-xs ml-1">L</span></td>
-        <td class="px-4 py-4 font-mono text-sm text-right text-ink-muted">${r.price_per_liter ? Number.parseFloat(r.price_per_liter).toFixed(3) + ' €' : '—'}</td>
+        <td class="px-4 py-4 font-mono text-sm text-right text-ink">${Number.parseFloat(String(r.km_since_last)).toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}<span class="text-ink-faint text-xs ml-1">km</span></td>
+        <td class="px-4 py-4 font-mono text-sm text-right text-ink">${Number.parseFloat(String(r.liters_filled)).toFixed(3)}<span class="text-ink-faint text-xs ml-1">L</span></td>
+        <td class="px-4 py-4 font-mono text-sm text-right text-ink-muted">${r.price_per_liter ? Number.parseFloat(String(r.price_per_liter)).toFixed(3) + ' €' : '—'}</td>
         <td class="px-4 py-4 font-mono text-sm text-right text-ink-muted">${totalCost === '—' ? '—' : totalCost + ' €'}</td>
         <td class="px-4 py-4 text-center"><span class="consumption-badge ${badgeClass}">${consumption.toFixed(2)} L/100</span></td>
-        <td class="px-6 py-4 text-sm text-ink-faint max-w-[160px] truncate">${r.notes || ''}</td>
+        <td class="px-6 py-4 text-sm text-ink-faint max-w-[160px] truncate">${r.notes ?? ''}</td>
         <td class="px-4 py-4 text-center space-x-2 flex items-center justify-center gap-2">
           <button type="button" class="p-1 rounded hover:bg-dark-700/40" data-action="edit" data-id="${r.id}" aria-label="Editar">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-ink" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
@@ -1072,388 +965,330 @@ function renderTable(data) {
         </td>
       </tr>
     `;
-  }).join('');
-
-  dom.tbody.querySelectorAll('tr.table-row-fade').forEach((row) => {
-    const delayValue = row.dataset.animationDelay || '0';
-    row.style.setProperty('--animation-delay', `${delayValue}ms`);
-  });
-}
-
-// ── Actualizar indicadores visuales de orden en las cabeceras ───────────
-function updateSortIndicators() {
-  const indicators = document.querySelectorAll('[data-sort-field]');
-  indicators.forEach((el) => {
-    const field = el.getAttribute('data-sort-field');
-    if (field === currentSortField) {
-      el.textContent = currentSortOrder === 'asc' ? '▲' : '▼';
-    } else {
-      el.textContent = '';
-    }
-  });
-}
-
-// ── Filtrar repostajes por coche activo, notas y renderizar dashboard ──
-function filterAndRenderTable() {
-  const searchTerm = dom.searchNotesInput.value.toLowerCase().trim();
-
-  let filtered = [...allRefuels];
-
-  if (activeCarId) {
-    filtered = filtered.filter((r) => Number(r.car_id) === Number(activeCarId));
-  } else {
-    filtered = [];
-  }
-
-  if (searchTerm !== '') {
-    filtered = filtered.filter((r) => {
-      const notes = (r.notes || '').toLowerCase();
-      return notes.includes(searchTerm);
+    }).join('');
+    dom.tbody.querySelectorAll('tr.table-row-fade').forEach((row) => {
+        const delayValue = row.dataset.animationDelay ?? '0';
+        row.style.setProperty('--animation-delay', `${delayValue}ms`);
     });
-  }
-
-  if (currentSortField) {
-    filtered = sortArray(filtered, currentSortField, currentSortOrder);
-  }
-
-  refuels = filtered;
-  renderAll(refuels);
 }
-
-// ── Función auxiliar para ordenar un array ───────────────────────────────
+function updateSortIndicators() {
+    const indicators = document.querySelectorAll('[data-sort-field]');
+    indicators.forEach((el) => {
+        const field = el.getAttribute('data-sort-field');
+        el.textContent = field === currentSortField
+            ? (currentSortOrder === 'asc' ? '▲' : '▼')
+            : '';
+    });
+}
+function filterAndRenderTable() {
+    const searchTerm = dom.searchNotesInput.value.toLowerCase().trim();
+    let filtered = [...allRefuels];
+    if (activeCarId) {
+        filtered = filtered.filter((r) => Number(r.car_id) === Number(activeCarId));
+    }
+    else {
+        filtered = [];
+    }
+    if (searchTerm !== '') {
+        filtered = filtered.filter((r) => (r.notes ?? '').toLowerCase().includes(searchTerm));
+    }
+    if (currentSortField) {
+        filtered = sortArray(filtered, currentSortField, currentSortOrder);
+    }
+    refuels = filtered;
+    renderAll(refuels);
+}
 function sortArray(data, field, order) {
-  const sorted = [...data].sort((a, b) => {
-    let valA = a[field];
-    let valB = b[field];
-
-    // Manejo nulo/indefinido
-    if (valA === null || typeof valA === 'undefined') valA = '';
-    if (valB === null || typeof valB === 'undefined') valB = '';
-
-    // Fechas: comparar como Date
-    if (field === 'refuel_date' || field === 'created_at') {
-      const dateA = new Date(valA);
-      const dateB = new Date(valB);
-      if (isNaN(dateA.getTime()) && isNaN(dateB.getTime())) return 0;
-      if (isNaN(dateA.getTime())) return order === 'asc' ? 1 : -1;
-      if (isNaN(dateB.getTime())) return order === 'asc' ? -1 : 1;
-      return order === 'asc' ? dateA - dateB : dateB - dateA;
-    }
-
-    // Números: intentar convertir
-    const numA = Number(valA);
-    const numB = Number(valB);
-    if (!isNaN(numA) && !isNaN(numB)) {
-      return order === 'asc' ? numA - numB : numB - numA;
-    }
-
-    // Strings: comparar localmente
-    const strA = String(valA).toLowerCase();
-    const strB = String(valB).toLowerCase();
-    if (strA < strB) return order === 'asc' ? -1 : 1;
-    if (strA > strB) return order === 'asc' ? 1 : -1;
-    return 0;
-  });
-  
-  return sorted;
+    return [...data].sort((a, b) => {
+        let valA = a[field];
+        let valB = b[field];
+        if (valA === null || typeof valA === 'undefined')
+            valA = '';
+        if (valB === null || typeof valB === 'undefined')
+            valB = '';
+        if (field === 'refuel_date' || field === 'created_at') {
+            const dateA = new Date(String(valA));
+            const dateB = new Date(String(valB));
+            if (isNaN(dateA.getTime()) && isNaN(dateB.getTime()))
+                return 0;
+            if (isNaN(dateA.getTime()))
+                return order === 'asc' ? 1 : -1;
+            if (isNaN(dateB.getTime()))
+                return order === 'asc' ? -1 : 1;
+            return order === 'asc'
+                ? dateA.getTime() - dateB.getTime()
+                : dateB.getTime() - dateA.getTime();
+        }
+        const numA = Number(valA);
+        const numB = Number(valB);
+        if (!isNaN(numA) && !isNaN(numB)) {
+            return order === 'asc' ? numA - numB : numB - numA;
+        }
+        const strA = String(valA).toLowerCase();
+        const strB = String(valB).toLowerCase();
+        if (strA < strB)
+            return order === 'asc' ? -1 : 1;
+        if (strA > strB)
+            return order === 'asc' ? 1 : -1;
+        return 0;
+    });
 }
-
-// ── Ordenar repostajes por un campo específico ────────────────────────────
 function sortRefuels(field) {
-  // Si hace clic en el mismo campo, cambiar el orden; si no, poner ascendente
-  if (currentSortField === field) {
-    currentSortOrder = currentSortOrder === 'asc' ? 'desc' : 'asc';
-  } else {
-    currentSortField = field;
-    currentSortOrder = 'asc';
-  }
-  
-  // Ordenar refuels (datos filtrados actualmente)
-  refuels = sortArray(refuels, field, currentSortOrder);
-  
-  // Renderizar tabla con datos ordenados
-  renderTable(refuels);
-  updateSortIndicators();
+    if (currentSortField === field) {
+        currentSortOrder = currentSortOrder === 'asc' ? 'desc' : 'asc';
+    }
+    else {
+        currentSortField = field;
+        currentSortOrder = 'asc';
+    }
+    refuels = sortArray(refuels, field, currentSortOrder);
+    renderTable(refuels);
+    updateSortIndicators();
 }
-
-// ── Ordenar por Total € (cálculo dinámico) ───────────────────────────────
 function calculateAndSortByTotalCost() {
-  if (currentSortField === 'total_cost') {
-    currentSortOrder = currentSortOrder === 'asc' ? 'desc' : 'asc';
-  } else {
-    currentSortField = 'total_cost';
-    currentSortOrder = 'asc';
-  }
-  
-  const sorted = [...refuels].sort((a, b) => {
-    const costA = (Number(a.liters_filled) * Number(a.price_per_liter)) || 0;
-    const costB = (Number(b.liters_filled) * Number(b.price_per_liter)) || 0;
-    
-    if (costA < costB) return currentSortOrder === 'asc' ? -1 : 1;
-    if (costA > costB) return currentSortOrder === 'asc' ? 1 : -1;
-    return 0;
-  });
-  
-  refuels = sorted;
-  renderTable(refuels);
-  updateSortIndicators();
+    if (currentSortField === 'total_cost') {
+        currentSortOrder = currentSortOrder === 'asc' ? 'desc' : 'asc';
+    }
+    else {
+        currentSortField = 'total_cost';
+        currentSortOrder = 'asc';
+    }
+    const sorted = [...refuels].sort((a, b) => {
+        const costA = (Number(a.liters_filled) * Number(a.price_per_liter)) || 0;
+        const costB = (Number(b.liters_filled) * Number(b.price_per_liter)) || 0;
+        if (costA < costB)
+            return currentSortOrder === 'asc' ? -1 : 1;
+        if (costA > costB)
+            return currentSortOrder === 'asc' ? 1 : -1;
+        return 0;
+    });
+    refuels = sorted;
+    renderTable(refuels);
+    updateSortIndicators();
 }
-
+// ── Table Actions ─────────────────────────────────────────────────────────
 function handleTableAction(event) {
-  const button = event.target.closest('button[data-action]');
-  if (!button) return;
-  const action = button.dataset.action;
-  const id = button.dataset.id;
-  if (!id) return;
-
-  if (action === 'edit') {
-    enterEditMode(Number(id));
-    return;
-  }
-  if (action === 'delete') {
-    confirmDelete(Number(id));
-  }
+    const button = event.target.closest('button[data-action]');
+    if (!button)
+        return;
+    const action = button.dataset.action;
+    const id = button.dataset.id;
+    if (!id)
+        return;
+    if (action === 'edit') {
+        enterEditMode(Number(id));
+        return;
+    }
+    if (action === 'delete') {
+        confirmDelete(Number(id));
+    }
 }
-
 function enterEditMode(id) {
-  const item = refuels.find((r) => r.id === id);
-  if (!item) {
-    showToast('No se encontró el repostaje seleccionado', 'error');
-    return;
-  }
-
-  editModeId = id;
-  setActiveCarId(item.car_id, { shouldRender: false });
-  dom.dateInput.value = item.refuel_date;
-  dom.kmInput.value = item.km_since_last;
-  dom.litersInput.value = item.liters_filled;
-  dom.priceInput.value = item.price_per_liter || '';
-  dom.notesInput.value = item.notes || '';
-  dom.submitText.textContent = 'Actualizar repostaje';
-  dom.cancelEditBtn.classList.remove('hidden');
-  updateConsumptionPreview();
-  showToast('Modo edición activado.', 'success');
+    const item = refuels.find((r) => r.id === id);
+    if (!item) {
+        showToast('No se encontró el repostaje seleccionado', 'error');
+        return;
+    }
+    editModeId = id;
+    setActiveCarId(item.car_id, { shouldRender: false });
+    dom.dateInput.value = String(item.refuel_date);
+    dom.kmInput.value = String(item.km_since_last);
+    dom.litersInput.value = String(item.liters_filled);
+    dom.priceInput.value = String(item.price_per_liter ?? '');
+    dom.notesInput.value = String(item.notes ?? '');
+    dom.submitText.textContent = 'Actualizar repostaje';
+    dom.cancelEditBtn.classList.remove('hidden');
+    updateConsumptionPreview();
+    showToast('Modo edición activado.', 'success');
 }
-
 function confirmDelete(id) {
-  const item = refuels.find((r) => r.id === id);
-  if (!item) {
-    showToast('No se encontró el repostaje seleccionado', 'error');
-    return;
-  }
-
-  const confirmed = globalThis.confirm(`¿Eliminar repostaje del ${formatDate(item.refuel_date)}? Esta acción no se puede deshacer.`);
-  if (!confirmed) return;
-
-  performDelete(id);
+    const item = refuels.find((r) => r.id === id);
+    if (!item) {
+        showToast('No se encontró el repostaje seleccionado', 'error');
+        return;
+    }
+    const confirmed = globalThis.confirm(`¿Eliminar repostaje del ${formatDate(item.refuel_date)}? Esta acción no se puede deshacer.`);
+    if (!confirmed)
+        return;
+    performDelete(id);
 }
-
 async function performDelete(id) {
-  try {
-    await deleteRefuel(id);
-    // Eliminar de ambas listas
-    allRefuels = allRefuels.filter((r) => r.id !== id);
-    refuels = refuels.filter((r) => r.id !== id);
-    renderAll(refuels);
-    showToast('Repostaje eliminado correctamente', 'success');
-    if (editModeId === id) resetForm();
-  } catch (error) {
-    console.error('[performDelete]', error);
-    showToast(error.message || 'Error al eliminar el repostaje', 'error');
-  }
+    try {
+        await deleteRefuel(id);
+        allRefuels = allRefuels.filter((r) => r.id !== id);
+        refuels = refuels.filter((r) => r.id !== id);
+        renderAll(refuels);
+        showToast('Repostaje eliminado correctamente', 'success');
+        if (editModeId === id)
+            resetForm();
+    }
+    catch (error) {
+        console.error('[performDelete]', error);
+        showToast(error.message ?? 'Error al eliminar el repostaje', 'error');
+    }
 }
-
 async function handleSubmit(event) {
-  event.preventDefault();
-
-  if (!activeCarId) {
-    showToast('Selecciona un coche activo antes de registrar el repostaje', 'error');
-    return;
-  }
-
-  const payload = {
-    km_since_last: dom.kmInput.value,
-    liters_filled: dom.litersInput.value,
-    car_id: activeCarId,
-  };
-
-  // Enviar fecha en formato ISO completo para máxima compatibilidad
-  if (dom.dateInput.value) {
-    const dateObj = new Date(dom.dateInput.value + 'T00:00:00Z');
-    payload.refuel_date = dateObj.toISOString().split('T')[0];
-  }
-  if (dom.priceInput.value) payload.price_per_liter = dom.priceInput.value;
-  if (dom.notesInput.value) payload.notes = dom.notesInput.value;
-
-  setSubmitLoading(true);
-
-  try {
-    if (editModeId !== null) {
-      const updated = await updateRefuel(editModeId, payload);
-      // Actualizar en ambas listas
-      allRefuels = allRefuels.map((r) => (r.id === updated.id ? updated : r));
-      refuels = refuels.map((r) => (r.id === updated.id ? updated : r));
-      renderAll(refuels);
-      showToast('Repostaje actualizado correctamente', 'success');
-      resetForm();
-      return;
+    event.preventDefault();
+    if (!activeCarId) {
+        showToast('Selecciona un coche activo antes de registrar el repostaje', 'error');
+        return;
     }
-
-    const created = await createRefuel(payload);
-    // Actualizar en ambas listas
-    allRefuels.unshift(created);
-    refuels.unshift(created);
-    renderAll(refuels);
-    dom.form.reset();
-    dom.preview.classList.add('hidden');
-    showToast('Repostaje registrado correctamente ✓', 'success');
-  } catch (error) {
-    console.error('[handleSubmit]', error);
-    showToast(error.message || 'Error al registrar el repostaje', 'error');
-  } finally {
-    setSubmitLoading(false);
-  }
+    const payload = {
+        km_since_last: dom.kmInput.value,
+        liters_filled: dom.litersInput.value,
+        car_id: activeCarId,
+    };
+    if (dom.dateInput.value) {
+        const dateObj = new Date(dom.dateInput.value + 'T00:00:00Z');
+        payload.refuel_date = dateObj.toISOString().split('T')[0];
+    }
+    if (dom.priceInput.value)
+        payload.price_per_liter = dom.priceInput.value;
+    if (dom.notesInput.value)
+        payload.notes = dom.notesInput.value;
+    setSubmitLoading(true);
+    try {
+        if (editModeId !== null) {
+            const updated = await updateRefuel(editModeId, payload);
+            allRefuels = allRefuels.map((r) => (r.id === updated.id ? updated : r));
+            refuels = refuels.map((r) => (r.id === updated.id ? updated : r));
+            renderAll(refuels);
+            showToast('Repostaje actualizado correctamente', 'success');
+            resetForm();
+            return;
+        }
+        const created = await createRefuel(payload);
+        allRefuels.unshift(created);
+        refuels.unshift(created);
+        renderAll(refuels);
+        dom.form.reset();
+        dom.preview.classList.add('hidden');
+        showToast('Repostaje registrado correctamente ✓', 'success');
+    }
+    catch (error) {
+        console.error('[handleSubmit]', error);
+        showToast(error.message ?? 'Error al registrar el repostaje', 'error');
+    }
+    finally {
+        setSubmitLoading(false);
+    }
 }
-
+// ── Form Helpers ──────────────────────────────────────────────────────────
 function setTodayAsDefault() {
-  const today = new Date().toISOString().split('T')[0];
-  dom.dateInput.value = today;
+    dom.dateInput.value = new Date().toISOString().split('T')[0];
 }
-
 function updateConsumptionPreview() {
-  const km = Number.parseFloat(dom.kmInput.value);
-  const liters = Number.parseFloat(dom.litersInput.value);
-
-  if (km > 0 && liters > 0) {
-    const estimated = (liters / km) * 100;
-    dom.previewValue.textContent = estimated.toFixed(2);
-    dom.preview.classList.remove('hidden');
-  } else {
-    dom.preview.classList.add('hidden');
-  }
-}
-
-function resetForm() {
-  editModeId = null;
-  dom.form.reset();
-  setTodayAsDefault();
-  dom.preview.classList.add('hidden');
-  dom.submitText.textContent = 'Registrar repostaje';
-  dom.cancelEditBtn.classList.add('hidden');
-}
-
-function formatDate(isoDate) {
-  if (!isoDate) return '—';
-  
-  let dateObj;
-  // Manejar varios formatos posibles de fecha desde la BD
-  if (isoDate.includes('T')) {
-    // Es ISO completo (2025-12-31T00:00:00.000Z)
-    dateObj = new Date(isoDate);
-  } else if (isoDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
-    // Es YYYY-MM-DD, agregar UTC para evitar problemas de zona horaria
-    dateObj = new Date(isoDate + 'T00:00:00Z');
-  } else {
-    // Intentar parseo genérico
-    dateObj = new Date(isoDate);
-  }
-  
-  if (isNaN(dateObj.getTime())) {
-    return 'Invalid Date';
-  }
-  
-  return dateObj.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
-}
-
-function setSubmitLoading(loading) {
-  dom.submitBtn.disabled = loading;
-  dom.submitText.textContent = loading ? 'Registrando...' : (editModeId !== null ? 'Actualizar repostaje' : 'Registrar repostaje');
-}
-
-function showTableState(state) {
-  dom.tableLoading.classList.toggle('hidden', state !== 'loading');
-  dom.tableEmpty.classList.toggle('hidden', state !== 'empty');
-  dom.tableWrapper.classList.toggle('hidden', state !== 'data');
-}
-
-function setApiStatus(online) {
-  dom.apiDot.className = `w-2 h-2 rounded-full ${online ? 'bg-green-500' : 'bg-red-500'}`;
-  dom.apiText.textContent = online ? 'API conectada' : 'API no disponible';
-}
-
-function showToast(message, type = 'success') {
-  clearTimeout(toastTimeout);
-  dom.toastMsg.textContent = message;
-  const isSuccess = type === 'success';
-  dom.toast.className = `fixed bottom-6 right-6 z-50 rounded-xl border px-5 py-4 text-sm max-w-xs shadow-2xl ${isSuccess ? 'bg-dark-800 border-green-800 text-green-400' : 'bg-dark-800 border-red-800 text-red-400'}`;
-  dom.toast.classList.add('visible');
-  toastTimeout = setTimeout(() => dom.toast.classList.remove('visible'), 3500);
-}
-
-function toDecimalNumber(value) {
-  if (value === null || typeof value === 'undefined') return null;
-  const normalized = String(value).trim().replace(',', '.');
-  if (!normalized) return null;
-  const parsed = Number(normalized);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
-function parseStationsPayload(contents) {
-  const raw = String(contents || '').trim();
-  if (!raw) {
-    throw new Error('La respuesta de la API está vacía');
-  }
-
-  const jsonText = (() => {
-    const firstBrace = raw.indexOf('{');
-    const lastBrace = raw.lastIndexOf('}');
-
-    if (firstBrace !== -1 && lastBrace > firstBrace) {
-      return raw.slice(firstBrace, lastBrace + 1);
+    const km = Number.parseFloat(dom.kmInput.value);
+    const liters = Number.parseFloat(dom.litersInput.value);
+    if (km > 0 && liters > 0) {
+        dom.previewValue.textContent = ((liters / km) * 100).toFixed(2);
+        dom.preview.classList.remove('hidden');
     }
-
-    return raw;
-  })();
-
-  const parsed = JSON.parse(jsonText);
-  return Array.isArray(parsed?.ListaEESSPrecio)
-    ? parsed.ListaEESSPrecio
-    : Array.isArray(parsed?.listaEESSPrecio)
-      ? parsed.listaEESSPrecio
-      : [];
+    else {
+        dom.preview.classList.add('hidden');
+    }
 }
-
+function resetForm() {
+    editModeId = null;
+    dom.form.reset();
+    setTodayAsDefault();
+    dom.preview.classList.add('hidden');
+    dom.submitText.textContent = 'Registrar repostaje';
+    dom.cancelEditBtn.classList.add('hidden');
+}
+function formatDate(isoDate) {
+    if (!isoDate)
+        return '—';
+    let dateObj;
+    if (isoDate.includes('T')) {
+        dateObj = new Date(isoDate);
+    }
+    else if (/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
+        dateObj = new Date(isoDate + 'T00:00:00Z');
+    }
+    else {
+        dateObj = new Date(isoDate);
+    }
+    if (isNaN(dateObj.getTime()))
+        return 'Invalid Date';
+    return dateObj.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+function setSubmitLoading(loading) {
+    dom.submitBtn.disabled = loading;
+    dom.submitText.textContent = loading
+        ? 'Registrando...'
+        : editModeId !== null ? 'Actualizar repostaje' : 'Registrar repostaje';
+}
+function showTableState(state) {
+    dom.tableLoading.classList.toggle('hidden', state !== 'loading');
+    dom.tableEmpty.classList.toggle('hidden', state !== 'empty');
+    dom.tableWrapper.classList.toggle('hidden', state !== 'data');
+}
+function setApiStatus(online) {
+    dom.apiDot.className = `w-2 h-2 rounded-full ${online ? 'bg-green-500' : 'bg-red-500'}`;
+    dom.apiText.textContent = online ? 'API conectada' : 'API no disponible';
+}
+function showToast(message, type = 'success') {
+    clearTimeout(toastTimeout);
+    dom.toastMsg.textContent = message;
+    const isSuccess = type === 'success';
+    dom.toast.className = `fixed bottom-6 right-6 z-50 rounded-xl border px-5 py-4 text-sm max-w-xs shadow-2xl ${isSuccess
+        ? 'bg-dark-800 border-green-800 text-green-400'
+        : 'bg-dark-800 border-red-800 text-red-400'}`;
+    dom.toast.classList.add('visible');
+    toastTimeout = setTimeout(() => dom.toast.classList.remove('visible'), 3500);
+}
+function toDecimalNumber(value) {
+    if (value === null || typeof value === 'undefined')
+        return null;
+    const normalized = String(value).trim().replace(',', '.');
+    if (!normalized)
+        return null;
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : null;
+}
+// ── Gas Stations ──────────────────────────────────────────────────────────
+function parseStationsPayload(contents) {
+    const raw = String(contents ?? '').trim();
+    if (!raw)
+        throw new Error('La respuesta de la API está vacía');
+    const jsonText = (() => {
+        const firstBrace = raw.indexOf('{');
+        const lastBrace = raw.lastIndexOf('}');
+        if (firstBrace !== -1 && lastBrace > firstBrace)
+            return raw.slice(firstBrace, lastBrace + 1);
+        return raw;
+    })();
+    const parsed = JSON.parse(jsonText);
+    return Array.isArray(parsed?.ListaEESSPrecio)
+        ? parsed.ListaEESSPrecio
+        : Array.isArray(parsed?.listaEESSPrecio)
+            ? parsed.listaEESSPrecio
+            : [];
+}
 function haversineDistanceKm(lat1, lon1, lat2, lon2) {
-  const toRad = (value) => (value * Math.PI) / 180;
-  const earthRadiusKm = 6371;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a = Math.sin(dLat / 2) ** 2
-    + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
-
-  return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const toRad = (value) => (value * Math.PI) / 180;
+    const earthRadiusKm = 6371;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a = Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+    return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
-
 function renderStationsList(stations) {
-  if (!dom.stationsList) return;
-
-  if (!stations.length) {
-    dom.stationsList.innerHTML = `
+    if (!dom.stationsList)
+        return;
+    if (!stations.length) {
+        dom.stationsList.innerHTML = `
       <div class="rounded-xl border border-dark-600 bg-dark-800/80 px-4 py-5 text-sm text-ink-muted">
         No se encontraron gasolineras en el radio seleccionado.
       </div>`;
-    return;
-  }
-
-  const starSvg = (isFavorite) => {
-    if (isFavorite) {
-      return `<svg width="20" height="20" viewBox="0 0 24 24" fill="#f97316" stroke="#f97316" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 10.26 24 10.35 17.18 16.54 19.34 24.81 12 18.65 4.66 24.81 6.82 16.54 0 10.35 8.91 10.26 12 2"></polygon></svg>`;
-    } else {
-      return `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-500"><polygon points="12 2 15.09 10.26 24 10.35 17.18 16.54 19.34 24.81 12 18.65 4.66 24.81 6.82 16.54 0 10.35 8.91 10.26 12 2"></polygon></svg>`;
+        return;
     }
-  };
-
-  dom.stationsList.innerHTML = stations.slice(0, 5).map((station) => `
+    const starSvg = (isFavorite) => isFavorite
+        ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="#f97316" stroke="#f97316" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 10.26 24 10.35 17.18 16.54 19.34 24.81 12 18.65 4.66 24.81 6.82 16.54 0 10.35 8.91 10.26 12 2"></polygon></svg>`
+        : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-500"><polygon points="12 2 15.09 10.26 24 10.35 17.18 16.54 19.34 24.81 12 18.65 4.66 24.81 6.82 16.54 0 10.35 8.91 10.26 12 2"></polygon></svg>`;
+    dom.stationsList.innerHTML = stations.slice(0, 5).map((station) => `
     <article class="rounded-xl border border-dark-600 bg-dark-800/85 p-4 shadow-lg cursor-pointer hover:border-fuel transition-colors" data-station-id="${station.id}" data-lat="${station.lat}" data-lon="${station.lon}">
       <div class="flex items-start justify-between gap-3">
         <div class="flex-1">
@@ -1470,303 +1305,241 @@ function renderStationsList(stations) {
       <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
         <div class="rounded-lg bg-dark-700/70 px-3 py-2">
           <p class="text-[11px] uppercase tracking-[0.2em] text-ink-faint">Gasolina 95 E5</p>
-          <p class="mt-1 font-mono text-fuel">${station.gasolina95 === null || typeof station.gasolina95 === 'undefined' ? 'No disponible' : `${station.gasolina95.toFixed(3)} €`}</p>
+          <p class="mt-1 font-mono text-fuel">${station.gasolina95 == null ? 'No disponible' : `${station.gasolina95.toFixed(3)} €`}</p>
         </div>
         <div class="rounded-lg bg-dark-700/70 px-3 py-2">
           <p class="text-[11px] uppercase tracking-[0.2em] text-ink-faint">Gasóleo A</p>
-          <p class="mt-1 font-mono text-fuel">${station.gasoleoA === null || typeof station.gasoleoA === 'undefined' ? 'No disponible' : `${station.gasoleoA.toFixed(3)} €`}</p>
+          <p class="mt-1 font-mono text-fuel">${station.gasoleoA == null ? 'No disponible' : `${station.gasoleoA.toFixed(3)} €`}</p>
         </div>
       </div>
     </article>
   `).join('');
-
-  // Agregar event delegation para los clics en las tarjetas
-  dom.stationsList.addEventListener('click', (event) => {
-    const article = event.target.closest('article[data-station-id]');
-    if (!article || !stationsMap) return;
-
-    const lat = parseFloat(article.getAttribute('data-lat'));
-    const lon = parseFloat(article.getAttribute('data-lon'));
-    const stationId = article.getAttribute('data-station-id');
-
-    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
-
-    // Animar el mapa hacia la gasolinera
-    stationsMap.flyTo([lat, lon], 15, { duration: 1.5 });
-
-    // Buscar y abrir el popup del marcador de esa gasolinera
-    markersLayer.eachLayer((marker) => {
-      const markerLatLng = marker.getLatLng();
-      if (Math.abs(markerLatLng.lat - lat) < 0.0001 && Math.abs(markerLatLng.lng - lon) < 0.0001) {
-        marker.openPopup();
-      }
+    dom.stationsList.addEventListener('click', (event) => {
+        const article = event.target.closest('article[data-station-id]');
+        if (!article || !stationsMap)
+            return;
+        const lat = parseFloat(article.getAttribute('data-lat') ?? '');
+        const lon = parseFloat(article.getAttribute('data-lon') ?? '');
+        const stationId = article.getAttribute('data-station-id');
+        if (!Number.isFinite(lat) || !Number.isFinite(lon))
+            return;
+        stationsMap.flyTo([lat, lon], 15, { duration: 1.5 });
+        markersLayer.eachLayer((marker) => {
+            const markerLatLng = marker.getLatLng();
+            if (Math.abs(markerLatLng.lat - lat) < 0.0001 && Math.abs(markerLatLng.lng - lon) < 0.0001) {
+                marker.openPopup();
+            }
+        });
     });
-  });
 }
-
 function toggleFavorite(stationId, event) {
-  event.stopPropagation();
-  
-  const index = favoriteStations.indexOf(stationId);
-  if (index > -1) {
-    favoriteStations.splice(index, 1);
-  } else {
-    favoriteStations.push(stationId);
-  }
-  
-  localStorage.setItem('fuelTracker_favorites', JSON.stringify(favoriteStations));
-  
-  // Refrescar la interfaz
-  updateMapRadius(Number(dom.radiusSlider?.value || 50));
+    event.stopPropagation();
+    const index = favoriteStations.indexOf(stationId);
+    if (index > -1) {
+        favoriteStations.splice(index, 1);
+    }
+    else {
+        favoriteStations.push(stationId);
+    }
+    localStorage.setItem('fuelTracker_favorites', JSON.stringify(favoriteStations));
+    updateMapRadius(Number(dom.radiusSlider?.value ?? 50));
 }
-
 function updateMapRadius(km) {
-  if (!stationsMap || !userPosition || !markersLayer) return;
-
-  const radiusMeters = Number(km) * 1000;
-
-  if (radiusCircle) {
-    stationsMap.removeLayer(radiusCircle);
-    radiusCircle = null;
-  }
-
-  radiusCircle = L.circle([userPosition.lat, userPosition.lon], {
-    radius: radiusMeters,
-    color: '#f97316',
-    weight: 2,
-    dashArray: '8, 8',
-    fillColor: '#f97316',
-    fillOpacity: 0.08
-  }).addTo(stationsMap);
-
-  markersLayer.clearLayers();
-
-  const sortType = dom.sortStations?.value || 'gasolina';
-
-  const filteredStations = allStationsData
-    .filter((station) => {
-      const withinRadius = Number.isFinite(station.lat) && Number.isFinite(station.lon) && station.distanceKm <= Number(km);
-      const isFavorite = favoriteStations.includes(station.id);
-      
-      // Si el toggle de favoritos está activo, filtrar solo favoritos
-      if (showOnlyFavorites) {
-        return withinRadius && isFavorite;
-      }
-      
-      return withinRadius;
+    if (!stationsMap || !userPosition || !markersLayer)
+        return;
+    const radiusMeters = Number(km) * 1000;
+    if (radiusCircle) {
+        stationsMap.removeLayer(radiusCircle);
+        radiusCircle = null;
+    }
+    radiusCircle = L.circle([userPosition.lat, userPosition.lon], {
+        radius: radiusMeters,
+        color: '#f97316',
+        weight: 2,
+        dashArray: '8, 8',
+        fillColor: '#f97316',
+        fillOpacity: 0.08,
+    }).addTo(stationsMap);
+    markersLayer.clearLayers();
+    const sortType = dom.sortStations?.value ?? 'gasolina';
+    const filteredStations = allStationsData
+        .filter((station) => {
+        const withinRadius = Number.isFinite(station.lat) &&
+            Number.isFinite(station.lon) &&
+            station.distanceKm <= Number(km);
+        if (showOnlyFavorites)
+            return withinRadius && favoriteStations.includes(station.id);
+        return withinRadius;
     })
-    .sort((a, b) => {
-      if (sortType === 'gasolina') {
-        return (a.gasolina95 ?? Number.POSITIVE_INFINITY) - (b.gasolina95 ?? Number.POSITIVE_INFINITY);
-      } else if (sortType === 'gasoil') {
-        return (a.gasoleoA ?? Number.POSITIVE_INFINITY) - (b.gasoleoA ?? Number.POSITIVE_INFINITY);
-      } else if (sortType === 'distancia') {
-        return a.distanceKm - b.distanceKm;
-      }
-      return 0;
+        .sort((a, b) => {
+        if (sortType === 'gasolina')
+            return (a.gasolina95 ?? Number.POSITIVE_INFINITY) - (b.gasolina95 ?? Number.POSITIVE_INFINITY);
+        if (sortType === 'gasoil')
+            return (a.gasoleoA ?? Number.POSITIVE_INFINITY) - (b.gasoleoA ?? Number.POSITIVE_INFINITY);
+        if (sortType === 'distancia')
+            return a.distanceKm - b.distanceKm;
+        return 0;
     });
-
-  filteredStations.forEach((station) => {
-    const formatPrice = (value) => {
-      if (value === null || typeof value === 'undefined' || value === '') {
-        return 'No disponible';
-      }
-      return `${Number(value).toFixed(3)} €`;
-    };
-
-    const popupText = `
+    filteredStations.forEach((station) => {
+        const formatPrice = (value) => {
+            if (value == null || value === '')
+                return 'No disponible';
+            return `${Number(value).toFixed(3)} €`;
+        };
+        const popupText = `
       <strong>${station.name}</strong><br>
       ${station.address}<br>
       <span>Gasolina 95 E5: ${formatPrice(station.gasolina95)}</span><br>
       <span>Gasóleo A: ${formatPrice(station.gasoleoA)}</span>
     `;
-
-    L.marker([station.lat, station.lon])
-      .addTo(markersLayer)
-      .bindPopup(popupText);
-  });
-
-  renderStationsList(filteredStations);
-}
-
-async function initStationsMap() {
-  if (!dom.map) return;
-
-  const defaultCenter = [40.4168, -3.7038];
-
-  if (!stationsMap) {
-    stationsMap = L.map('map', {
-      zoomControl: true,
-      attributionControl: false,
-    }).setView(defaultCenter, 8);
-
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      subdomains: 'abcd',
-      maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-    }).addTo(stationsMap);
-
-    stationsLayerGroup = L.layerGroup().addTo(stationsMap);
-    markersLayer = L.layerGroup().addTo(stationsMap);
-  } else {
-    stationsMap.invalidateSize();
-  }
-
-  if (!stationsLayerGroup) {
-    stationsLayerGroup = L.layerGroup().addTo(stationsMap);
-  }
-
-  if (!markersLayer) {
-    markersLayer = L.layerGroup().addTo(stationsMap);
-  }
-
-  stationsLayerGroup.clearLayers();
-  markersLayer.clearLayers();
-  stationsUserMarker = null;
-  stationsData = [];
-  allStationsData = [];
-  userPosition = null;
-  if (radiusCircle) {
-    stationsMap.removeLayer(radiusCircle);
-    radiusCircle = null;
-  }
-  renderStationsList([]);
-
-  const onPositionSuccess = async (position) => {
-    const userLat = position.coords.latitude;
-    const userLon = position.coords.longitude;
-    userPosition = { lat: userLat, lon: userLon };
-
-    stationsMap.setView([userLat, userLon], 11);
-
-    const userIcon = L.divIcon({
-      className: 'custom-user-icon',
-      html: '<div class="custom-user-marker"></div>',
-      iconSize: [20, 20],
-      iconAnchor: [10, 10]
+        L.marker([station.lat, station.lon]).addTo(markersLayer).bindPopup(popupText);
     });
-    stationsUserMarker = L.marker([userLat, userLon], { icon: userIcon, title: 'Tú estás aquí' })
-      .addTo(stationsLayerGroup)
-      .bindPopup('Tú estás aquí')
-      .openPopup();
-
-    try {
-      if (dom.stationsList) {
-        dom.stationsList.innerHTML = `
+    renderStationsList(filteredStations);
+}
+async function initStationsMap() {
+    if (!dom.map)
+        return;
+    const defaultCenter = [40.4168, -3.7038];
+    if (!stationsMap) {
+        stationsMap = L.map('map', { zoomControl: true, attributionControl: false }).setView(defaultCenter, 8);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            subdomains: 'abcd',
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        }).addTo(stationsMap);
+        stationsLayerGroup = L.layerGroup().addTo(stationsMap);
+        markersLayer = L.layerGroup().addTo(stationsMap);
+    }
+    else {
+        stationsMap.invalidateSize();
+    }
+    if (!stationsLayerGroup)
+        stationsLayerGroup = L.layerGroup().addTo(stationsMap);
+    if (!markersLayer)
+        markersLayer = L.layerGroup().addTo(stationsMap);
+    stationsLayerGroup.clearLayers();
+    markersLayer.clearLayers();
+    stationsUserMarker = null;
+    stationsData = [];
+    allStationsData = [];
+    userPosition = null;
+    if (radiusCircle) {
+        stationsMap.removeLayer(radiusCircle);
+        radiusCircle = null;
+    }
+    renderStationsList([]);
+    const onPositionSuccess = async (position) => {
+        const userLat = position.coords.latitude;
+        const userLon = position.coords.longitude;
+        userPosition = { lat: userLat, lon: userLon };
+        stationsMap.setView([userLat, userLon], 11);
+        const userIcon = L.divIcon({
+            className: 'custom-user-icon',
+            html: '<div class="custom-user-marker"></div>',
+            iconSize: [20, 20],
+            iconAnchor: [10, 10],
+        });
+        stationsUserMarker = L.marker([userLat, userLon], { icon: userIcon, title: 'Tú estás aquí' })
+            .addTo(stationsLayerGroup)
+            .bindPopup('Tú estás aquí')
+            .openPopup();
+        try {
+            if (dom.stationsList) {
+                dom.stationsList.innerHTML = `
           <div class="rounded-xl border border-dark-600 bg-dark-800/80 px-4 py-5 text-sm text-ink-muted animate-pulse">
             📡 Buscando gasolineras y precios en tiempo real...
           </div>`;
-      }
-
-      const proxyUrl = 'https://corsproxy.io/?https%3A%2F%2Fsedeaplicaciones.minetur.gob.es%2FServiciosRESTCarburantes%2FPreciosCarburantes%2FEstacionesTerrestres%2FFiltroProvincia%2F35';      const response = await fetch(proxyUrl);
-      const data = await response.json();
-      const stations = data.ListaEESSPrecio || [];
-
-      // DEBUG CORREGIDO: Buscamos en los datos crudos directamente de la API
-      console.log("Muestra API Gran Canaria (Datos Crudos):", stations.find(s => s['Provincia'] === 'PALMAS (LAS)'));
-
-      stationsData = stations
-        .map((station) => {
-          // Búsqueda dinámica de propiedades para evitar fallos por espacios en blanco del gobierno
-          const latKey = Object.keys(station).find(k => k.includes('Latitud'));
-          const lonKey = Object.keys(station).find(k => k.includes('Longitud'));
-          
-          if (!latKey || !lonKey) return null;
-
-          const lat = parseFloat(String(station[latKey] || '').replace(',', '.').trim());
-          const lon = parseFloat(String(station[lonKey] || '').replace(',', '.').trim());
-
-          if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
-
-          const distanceKm = haversineDistanceKm(userLat, userLon, lat, lon);
-          
-          // Parseo manual seguro para evitar que toDecimalNumber rompa el código
-          const gas95Str = String(station['Precio Gasolina 95 E5'] || '').replace(',', '.').trim();
-          const gasAStr = String(station['Precio Gasoleo A'] || '').replace(',', '.').trim();
-          
-          const gasolina95 = gas95Str !== '' ? parseFloat(gas95Str) : null;
-          const gasoleoA = gasAStr !== '' ? parseFloat(gasAStr) : null;
-
-          return {
-            id: station.IDEESS || `${station['C.P.'] || ''}-${station['Rótulo'] || ''}`,
-            name: station['Rótulo'] || 'Gasolinera',
-            address: `${station.Dirección || ''}${station.Localidad ? `, ${station.Localidad}` : ''}`.replace(/^,\s*/, ''),
-            lat,
-            lon,
-            distanceKm,
-            gasolina95,
-            gasoleoA,
-          };
-        })
-        .filter(Boolean)
-        .sort((a, b) => {
-          const priceA = a.gasolina95 ?? Number.POSITIVE_INFINITY;
-          const priceB = b.gasolina95 ?? Number.POSITIVE_INFINITY;
-          return priceA - priceB;
-        });
-
-      allStationsData = stationsData;
-      console.log("1. Total de gasolineras en toda España procesadas:", allStationsData.length);
-      
-      const enCanarias = allStationsData.filter(s => s.lat < 30); // Todo lo que esté por debajo de la latitud de la península
-      console.log("2. Gasolineras detectadas en Canarias:", enCanarias.length);
-      
-      if (enCanarias.length > 0) {
-          console.log("3. Muestra de una gasolinera canaria con su distancia a ti:", enCanarias[0]);
-      }
-      updateMapRadius(Number(dom.radiusSlider?.value || 50));
-    } catch (error) {
-      console.error('[initStationsMap]', error);
-      showToast('No se pudieron cargar las gasolineras cercanas', 'error');
+            }
+            const proxyUrl = 'https://corsproxy.io/?https%3A%2F%2Fsedeaplicaciones.minetur.gob.es%2FServiciosRESTCarburantes%2FPreciosCarburantes%2FEstacionesTerrestres%2FFiltroProvincia%2F35';
+            const response = await fetch(proxyUrl);
+            const data = await response.json();
+            const stations = data.ListaEESSPrecio ?? [];
+            console.log('Muestra API Gran Canaria (Datos Crudos):', stations.find((s) => s['Provincia'] === 'PALMAS (LAS)'));
+            stationsData = stations
+                .map((station) => {
+                const latKey = Object.keys(station).find((k) => k.includes('Latitud'));
+                const lonKey = Object.keys(station).find((k) => k.includes('Longitud'));
+                if (!latKey || !lonKey)
+                    return null;
+                const lat = parseFloat(String(station[latKey] ?? '').replace(',', '.').trim());
+                const lon = parseFloat(String(station[lonKey] ?? '').replace(',', '.').trim());
+                if (!Number.isFinite(lat) || !Number.isFinite(lon))
+                    return null;
+                const distanceKm = haversineDistanceKm(userLat, userLon, lat, lon);
+                const gas95Str = String(station['Precio Gasolina 95 E5'] ?? '').replace(',', '.').trim();
+                const gasAStr = String(station['Precio Gasoleo A'] ?? '').replace(',', '.').trim();
+                return {
+                    id: station.IDEESS ?? `${station['C.P.'] ?? ''}-${station['Rótulo'] ?? ''}`,
+                    name: station['Rótulo'] ?? 'Gasolinera',
+                    address: `${station['Dirección'] ?? ''}${station['Localidad'] ? `, ${station['Localidad']}` : ''}`.replace(/^,\s*/, ''),
+                    lat,
+                    lon,
+                    distanceKm,
+                    gasolina95: gas95Str !== '' ? parseFloat(gas95Str) : null,
+                    gasoleoA: gasAStr !== '' ? parseFloat(gasAStr) : null,
+                };
+            })
+                .filter((s) => s !== null)
+                .sort((a, b) => {
+                const priceA = a.gasolina95 ?? Number.POSITIVE_INFINITY;
+                const priceB = b.gasolina95 ?? Number.POSITIVE_INFINITY;
+                return priceA - priceB;
+            });
+            allStationsData = stationsData;
+            console.log('1. Total de gasolineras procesadas:', allStationsData.length);
+            const enCanarias = allStationsData.filter((s) => s.lat < 30);
+            console.log('2. Gasolineras detectadas en Canarias:', enCanarias.length);
+            if (enCanarias.length > 0)
+                console.log('3. Muestra canaria:', enCanarias[0]);
+            updateMapRadius(Number(dom.radiusSlider?.value ?? 50));
+        }
+        catch (error) {
+            console.error('[initStationsMap]', error);
+            showToast('No se pudieron cargar las gasolineras cercanas', 'error');
+        }
+    };
+    const onPositionError = (error) => {
+        console.error('[initStationsMap] geolocation error', error);
+        showToast('No se pudo obtener tu ubicación para mostrar gasolineras cercanas', 'error');
+    };
+    if (!navigator.geolocation) {
+        showToast('Tu navegador no soporta geolocalización', 'error');
+        return;
     }
-  };
-
-  const onPositionError = (error) => {
-    console.error('[initStationsMap] geolocation error', error);
-    showToast('No se pudo obtener tu ubicación para mostrar gasolineras cercanas', 'error');
-  };
-
-  if (!navigator.geolocation) {
-    showToast('Tu navegador no soporta geolocalización', 'error');
-    return;
-  }
-
-  navigator.geolocation.getCurrentPosition(onPositionSuccess, onPositionError, {
-    enableHighAccuracy: true,
-    timeout: 10000,
-    maximumAge: 600000,
-  });
+    navigator.geolocation.getCurrentPosition(onPositionSuccess, onPositionError, {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 600000,
+    });
 }
-
+// ── Car Modal ─────────────────────────────────────────────────────────────
 const openCarModal = () => {
-  if (!dom.carModal) return;
-  dom.carModal.classList.remove('hidden');
-  dom.carModal.setAttribute('aria-hidden', 'false');
-
-  dom.carBrandInput.innerHTML = '<option value="">Cargando marcas...</option>';
-  dom.carBrandInput.disabled = true;
-  dom.carModelInput.innerHTML = '<option value="">Selecciona una marca primero...</option>';
-  dom.carModelInput.disabled = true;
-  dom.carModelInput.classList.remove('hidden');
-  dom.carModelManualInput.classList.add('hidden');
-  dom.carModelManualInput.removeAttribute('required');
-  dom.carModelManualInput.value = '';
-
-  fetchCarBrands();
+    if (!dom.carModal)
+        return;
+    dom.carModal.classList.remove('hidden');
+    dom.carModal.setAttribute('aria-hidden', 'false');
+    dom.carBrandInput.innerHTML = '<option value="">Cargando marcas...</option>';
+    dom.carBrandInput.disabled = true;
+    dom.carModelInput.innerHTML = '<option value="">Selecciona una marca primero...</option>';
+    dom.carModelInput.disabled = true;
+    dom.carModelInput.classList.remove('hidden');
+    dom.carModelManualInput.classList.add('hidden');
+    dom.carModelManualInput.removeAttribute('required');
+    dom.carModelManualInput.value = '';
+    fetchCarBrands();
 };
-
 const closeCarModal = () => {
-  if (!dom.carModal) return;
-  dom.carModal.classList.add('hidden');
-  dom.carModal.setAttribute('aria-hidden', 'true');
-  dom.carModalForm.reset();
-
-  dom.carBrandInput.innerHTML = '<option value="">Selecciona una marca...</option>';
-  dom.carBrandInput.disabled = false;
-  dom.carModelInput.innerHTML = '<option value="">Selecciona una marca primero...</option>';
-  dom.carModelInput.disabled = true;
-  dom.carModelInput.classList.remove('hidden');
-  dom.carModelManualInput.classList.add('hidden');
-  dom.carModelManualInput.removeAttribute('required');
-  dom.carModelManualInput.value = '';
+    if (!dom.carModal)
+        return;
+    dom.carModal.classList.add('hidden');
+    dom.carModal.setAttribute('aria-hidden', 'true');
+    dom.carModalForm.reset();
+    dom.carBrandInput.innerHTML = '<option value="">Selecciona una marca...</option>';
+    dom.carBrandInput.disabled = false;
+    dom.carModelInput.innerHTML = '<option value="">Selecciona una marca primero...</option>';
+    dom.carModelInput.disabled = true;
+    dom.carModelInput.classList.remove('hidden');
+    dom.carModelManualInput.classList.add('hidden');
+    dom.carModelManualInput.removeAttribute('required');
+    dom.carModelManualInput.value = '';
 };

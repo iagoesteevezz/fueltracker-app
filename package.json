@@ -6,6 +6,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
+    "build:frontend": "tsc --project fueltracker-frontend/tsconfig.json",
+    "watch:frontend": "tsc --project fueltracker-frontend/tsconfig.json --watch",
     "db:migrate": "node -e \"const url = require('dotenv').config().parsed.DATABASE_URL; require('child_process').execSync('psql ' + url + ' -f src/db/migrations/001_create_refuels.sql', {stdio: 'inherit'})\"",
     "db:migrate:users": "node -e \"const url = require('dotenv').config().parsed.DATABASE_URL; require('child_process').execSync('psql ' + url + ' -f src/db/migrations/002_create_users.sql', {stdio: 'inherit'})\""
   },
@@ -18,6 +20,7 @@
     "pg": "^8.12.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.4"
+    "nodemon": "^3.1.4",
+    "typescript": "^6.0.3"
   }
 }
